@@ -1,0 +1,32 @@
+{
+  "allSkills": [
+    "JavaScript", "TypeScript", "Python", "Java", "React", "Node.js", "SQL", "MongoDB",
+    "AWS", "Azure", "GCP", "Docker", "Kubernetes", "Terraform", "Machine Learning",
+    "TensorFlow", "PyTorch", "Data Analysis", "Tableau", "Power BI", "Cybersecurity",
+    "Networking", "DevOps", "CI/CD", "Agile", "Scrum", "Product Management", "Figma",
+    "UX Research", "GraphQL", "REST APIs", "Microservices", "Kafka", "Spark", "Hadoop",
+    "Blockchain", "Smart Contracts", "AR/VR", "Edge Computing", "5G", "LLMs", "MLOps",
+    "Cloud Security", "Zero Trust", "SIEM", "Penetration Testing"
+  ],
+  "departmentGaps": [
+    { "department": "Engineering", "gapScore": 45, "employees": 8, "criticalSkills": ["AI Integration", "Kubernetes", "TypeScript"] },
+    { "department": "Data Science", "gapScore": 62, "employees": 4, "criticalSkills": ["LLMs", "MLOps", "Reinforcement Learning"] },
+    { "department": "Security", "gapScore": 68, "employees": 2, "criticalSkills": ["Zero Trust", "AI Threat Detection"] },
+    { "department": "HR", "gapScore": 70, "employees": 2, "criticalSkills": ["People Analytics", "AI Recruiting"] },
+    { "department": "Finance", "gapScore": 72, "employees": 2, "criticalSkills": ["Predictive Analytics", "Blockchain Finance"] },
+    { "department": "Operations", "gapScore": 75, "employees": 2, "criticalSkills": ["Process Automation", "AI Analytics"] },
+    { "department": "IT", "gapScore": 60, "employees": 3, "criticalSkills": ["Cloud Migration", "DevSecOps"] },
+    { "department": "Product", "gapScore": 55, "employees": 2, "criticalSkills": ["AI Product Strategy", "Data Analytics"] },
+    { "department": "Design", "gapScore": 28, "employees": 1, "criticalSkills": ["AR/VR UX", "AI-assisted Design"] },
+    { "department": "Marketing", "gapScore": 48, "employees": 1, "criticalSkills": ["AI Marketing", "Data Analytics"] }
+  ],
+  "demandVsCapability": [
+    { "year": "2024", "demand": 65, "capability": 55 },
+    { "year": "2025", "demand": 70, "capability": 58 },
+    { "year": "2026", "demand": 76, "capability": 62 },
+    { "year": "2027", "demand": 82, "capability": 65 },
+    { "year": "2028", "demand": 88, "capability": 68 },
+    { "year": "2029", "demand": 93, "capability": 72 },
+    { "year": "2030", "demand": 97, "capability": 75 }
+  ]
+}
