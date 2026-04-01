@@ -1,16 +1,51 @@
-# React + Vite
+# SkillSync AI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+SkillSync AI is a workforce skill-gap intelligence platform for HR leaders, L&D teams, and C-suite stakeholders.
 
-Currently, two official plugins are available:
+The application provides:
+- Workforce health and risk dashboards
+- Employee-level skill-gap analysis
+- AI-guided learning recommendations
+- Market demand and technology trend intelligence
+- Forward-looking skill-gap forecasting controls
+- Admin monitoring with organization-wide risk visibility
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
 
-## React Compiler
+- React 19
+- Vite
+- Tailwind CSS
+- Recharts
+- Lucide React
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Local Development
 
-## Expanding the ESLint configuration
+1. Install dependencies:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+```
+
+2. Start the development server:
+
+```bash
+npm run dev
+```
+
+3. Build for production:
+
+```bash
+npm run build
+```
+
+4. Preview the production build:
+
+```bash
+npm run preview
+```
+
+## Notes
+
+- The project runs in dark mode by default.
+- Data is currently static and sourced from local JSON files in the src/data folder.
+- Visual design follows an enterprise dashboard system optimized for dense analytical workflows.
