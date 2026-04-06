@@ -1,232 +1,76 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg-base: #ffffff;
-  --bg-surface: #ffffff;
-  --bg-elevated: #f3f3f3;
-  --border: #000000;
-  --text-primary: #000000;
-  --text-secondary: #2f2f2f;
-  --text-muted: #6b6b6b;
-  --accent: #000000;
-  --accent-soft: #e8e8e8;
-  --success: #111111;
-  --warning: #333333;
-  --danger: #555555;
-  --chart-1: #000000;
-  --chart-2: #3a3a3a;
-  --chart-3: #666666;
-  --chart-4: #8a8a8a;
-}
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
 
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+ 
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+ 
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+ 
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+ 
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+ 
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+ 
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+ 
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+ 
 @layer base {
   * {
-    border-color: var(--border);
-    @apply transition-colors duration-150;
+    @apply border-border;
   }
-
-  html {
-    color-scheme: light;
-  }
-
   body {
-    margin: 0;
-    background: var(--bg-base);
-    color: var(--text-primary);
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-weight: 400;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'DM Sans', sans-serif;
-    letter-spacing: -0.02em;
-    color: var(--text-primary);
-  }
-
-  button, input, select, textarea {
-    font-family: inherit;
-  }
-
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: var(--bg-base);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 999px;
-  }
-}
-
-@layer components {
-  .mono {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 500;
-  }
-
-  .page-shell {
-    @apply mx-auto w-full max-w-[1280px] p-5 md:p-8 space-y-6;
-  }
-
-  .page-header {
-    @apply flex flex-col gap-3 md:flex-row md:items-end md:justify-between;
-  }
-
-  .page-title {
-    @apply text-2xl md:text-3xl font-semibold;
-  }
-
-  .page-subtitle {
-    @apply mt-1 text-sm;
-    color: var(--text-secondary);
-  }
-
-  .card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    @apply p-5 md:p-6;
-  }
-
-  .card-interactive {
-    @apply transition-all duration-150;
-  }
-
-  .card-interactive:hover {
-    transform: translateY(-1px);
-    border-color: #000000;
-  }
-
-  .card-kicker {
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    @apply font-medium;
-  }
-
-  .kpi-value {
-    @apply text-3xl;
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--text-primary);
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: #ffffff;
-    @apply min-h-9 px-4 py-2 rounded-md text-sm font-medium transition duration-150 active:scale-[0.98];
-  }
-
-  .btn-primary:hover {
-    background: #1a1a1a;
-  }
-
-  .btn-secondary {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    @apply min-h-9 px-4 py-2 rounded-md text-sm font-medium transition duration-150 active:scale-[0.98];
-  }
-
-  .btn-secondary:hover {
-    background: var(--bg-elevated);
-  }
-
-  .btn-ghost {
-    color: var(--text-secondary);
-    @apply min-h-9 px-3 py-2 rounded-md text-sm font-medium transition duration-150;
-  }
-
-  .btn-ghost:hover {
-    color: var(--text-primary);
-    background: var(--bg-elevated);
-  }
-
-  .input-field {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    @apply h-9 rounded-md px-3 text-sm outline-none;
-  }
-
-  .input-field::placeholder {
-    color: var(--text-muted);
-  }
-
-  .input-field:focus {
-    border-color: var(--accent);
-  }
-
-  .status-pill {
-    @apply inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .badge-low {
-    background: #f0f0f0;
-    color: #000000;
-  }
-
-  .badge-medium {
-    background: #dfdfdf;
-    color: #000000;
-  }
-
-  .badge-critical {
-    background: #cfcfcf;
-    color: #000000;
-  }
-
-  .badge-high {
-    background: #e3e3e3;
-    color: #000000;
-  }
-
-  .table-shell {
-    @apply overflow-auto;
-  }
-
-  .table {
-    @apply w-full text-sm;
-  }
-
-  .table thead th {
-    @apply sticky top-0 z-10 px-4 py-3 text-left text-[11px] font-medium uppercase;
-    background: var(--bg-elevated);
-    color: var(--text-muted);
-    letter-spacing: 0.1em;
-  }
-
-  .table tbody tr {
-    border-bottom: 1px solid var(--border);
-  }
-
-  .table tbody tr:hover {
-    background: color-mix(in srgb, var(--bg-elevated) 60%, transparent);
-  }
-
-  .table td {
-    @apply px-4 py-3 align-middle;
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 200ms ease;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
+    @apply bg-background text-foreground font-sans;
   }
 }
