@@ -1,79 +1,139 @@
-import { Briefcase, Calendar } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Calendar, Sparkles, Users } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function MyProjects() {
-  const currentProject = {
-    name: 'Core Platform Revamp',
-    role: 'Lead Frontend Developer',
-    timeline: 'Jan 2026 - Aug 2026',
-    teamSize: 5,
-    skills_used: ['React', 'TypeScript', 'Node.js']
-  };
+  const { user } = useAuth();
 
-  const pastProjects = [
-    {
-      name: 'Mobile App V2',
-      role: 'Frontend Developer',
-      timeline: 'Mar 2025 - Nov 2025',
-      skills_used: ['React Native', 'UI/UX Design']
-    }
-  ];
+  const { data: assignments } = useQuery({
+    queryKey: ['my-projects', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data } = await supabase
+        .from('project_assignments')
+        .select('status, role_in_project, assigned_at, projects(name, description, start_date, end_date, team_size)')
+        .eq('employee_id', user.id)
+        .order('assigned_at', { ascending: false });
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const current = assignments?.find((assignment: any) => assignment.status === 'active');
+  const past = (assignments || []).filter((assignment: any) => assignment.status !== 'active');
+  const currentProject = Array.isArray(current?.projects) ? current?.projects[0] : current?.projects;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">My Projects</h2>
-          <p className="text-muted-foreground mt-1">View your current assignment and project history.</p>
+      <section className="glass-panel rounded-[32px] p-6 md:p-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#00d4aa]/20 bg-[#00d4aa]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#00d4aa]">
+              <Sparkles className="h-3.5 w-3.5" />
+              Delivery Portfolio
+            </div>
+            <h2 className="mt-4 text-3xl font-black tracking-[-0.03em]">My Projects</h2>
+            <p className="mt-2 max-w-2xl text-sm text-white/60">
+              Follow your current assignment, see where your time is invested, and keep a clean timeline of the projects shaping your growth.
+            </p>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-xl font-bold mb-4">Current Assignment</h3>
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
-               <Briefcase className="w-32 h-32" />
-             </div>
-             
-             <h4 className="text-2xl font-bold text-primary mb-1">{currentProject.name}</h4>
-             <p className="font-medium mb-4">{currentProject.role}</p>
-             
-             <div className="flex gap-6 text-sm text-muted-foreground mb-6">
-               <div className="flex items-center gap-1"><Calendar className="w-4 h-4"/> {currentProject.timeline}</div>
-               <div className="flex items-center gap-1"><Briefcase className="w-4 h-4"/> Team of {currentProject.teamSize}</div>
-             </div>
-
-             <div>
-               <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-2">Skills Applied</p>
-               <div className="flex flex-wrap gap-2">
-                 {currentProject.skills_used.map(s => (
-                   <span key={s} className="bg-background border px-3 py-1 text-sm rounded-full">{s}</span>
-                 ))}
-               </div>
-             </div>
+      <section className="glass-panel card-float overflow-hidden rounded-[32px] p-6 md:p-8">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#00d4aa]">Current Assignment</div>
+            <h3 className="mt-2 text-2xl font-bold">Active workstream</h3>
+          </div>
+          <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white/60">
+            {current ? 'Live Project' : 'Unassigned'}
           </div>
         </div>
 
-        <div>
-           <h3 className="text-xl font-bold mb-4 mt-8">Past Projects</h3>
-           <div className="grid gap-4">
-             {pastProjects.map((p, i) => (
-                <div key={i} className="bg-card border rounded-lg p-5">
-                   <div className="flex justify-between items-start mb-2">
-                     <h4 className="font-bold text-lg">{p.name}</h4>
-                     <span className="text-sm text-muted-foreground flex items-center gap-1"><Calendar className="w-4 h-4"/> {p.timeline}</span>
-                   </div>
-                   <p className="text-sm font-medium mb-4">{p.role}</p>
-                   <div className="flex flex-wrap gap-1">
-                     {p.skills_used.map(s => (
-                       <span key={s} className="bg-secondary text-secondary-foreground px-2 py-0.5 text-xs rounded-full">{s}</span>
-                     ))}
-                   </div>
+        {current ? (
+          <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="rounded-[28px] border border-[#00d4aa]/18 bg-[#00d4aa]/10 p-6">
+              <h4 className="text-3xl font-black tracking-[-0.03em] text-white">{currentProject?.name}</h4>
+              <p className="mt-2 text-sm font-semibold text-[#00d4aa]">{current.role_in_project || 'Team Member'}</p>
+
+              <div className="mt-6 flex flex-wrap gap-4 text-sm text-white/65">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-[#f0a500]" />
+                  {currentProject?.start_date} - {currentProject?.end_date}
                 </div>
-             ))}
-           </div>
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-[#7c6af7]" />
+                  Team of {currentProject?.team_size || 0}
+                </div>
+              </div>
+
+              <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/10">
+                <div className="bar-grow h-full w-2/3 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#7c6af7]" />
+              </div>
+
+              <div className="mt-6">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">Project Overview</div>
+                <p className="mt-3 text-sm leading-7 text-white/62">{currentProject?.description}</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <ProjectMetric label="Project Status" value="Active" detail="Currently assigned and delivering" />
+              <ProjectMetric label="Role Focus" value={current.role_in_project || 'Team Member'} detail="Primary contribution lane" />
+              <ProjectMetric label="Timeline" value={currentProject?.end_date || 'TBD'} detail="Projected completion date" />
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-[28px] border border-dashed border-white/10 bg-white/5 p-10 text-center text-white/45">
+            You have no active assignments right now.
+          </div>
+        )}
+      </section>
+
+      <section className="glass-panel overflow-hidden rounded-[32px]">
+        <div className="border-b border-white/10 px-6 py-5">
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f0a500]">Project History</div>
+          <h3 className="mt-2 text-2xl font-bold">Past engagements</h3>
         </div>
-      </div>
+        <div className="space-y-4 p-6">
+          {past.length > 0 ? (
+            past.map((assignment: any, index: number) => {
+              const project = Array.isArray(assignment.projects) ? assignment.projects[0] : assignment.projects;
+              return (
+                <div key={index} className="card-float rounded-[26px] border border-white/10 bg-white/5 p-5">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <h4 className="text-xl font-bold">{project?.name}</h4>
+                      <p className="mt-2 text-sm font-semibold text-white/72">{assignment.role_in_project || 'Team Member'}</p>
+                      <p className="mt-3 text-sm leading-7 text-white/55">{project?.description}</p>
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white/55">
+                      <Calendar className="h-4 w-4 text-[#f0a500]" />
+                      {project?.start_date} - {project?.end_date}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="rounded-[26px] border border-dashed border-white/10 bg-white/5 p-10 text-center text-white/45">
+              No past projects yet.
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ProjectMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">{label}</div>
+      <div className="mt-2 text-2xl font-black">{value}</div>
+      <div className="mt-2 text-sm text-white/52">{detail}</div>
     </div>
   );
 }

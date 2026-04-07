@@ -1,126 +1,243 @@
 import { useQuery } from '@tanstack/react-query';
+import { ShieldCheck, Plus, Pencil, Sparkles, UserCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { ShieldCheck, Plus, Pencil } from 'lucide-react';
-
-// Mock data to simulate API response if empty
-const MOCK_RADAR_DATA = [
-  { subject: 'React', level: 80, fullMark: 100 },
-  { subject: 'Node.js', level: 60, fullMark: 100 },
-  { subject: 'Problem Solving', level: 90, fullMark: 100 },
-  { subject: 'Communication', level: 85, fullMark: 100 },
-  { subject: 'UI/UX', level: 40, fullMark: 100 },
-  { subject: 'Cloud', level: 50, fullMark: 100 },
-];
 
 export default function MyProfile() {
-  const { user } = useAuth();
-  
+  const { user, profile } = useAuth();
+
   const { data: skills, isLoading } = useQuery({
     queryKey: ['employee-skills', user?.id],
     queryFn: async () => {
-      // Intentionally simulating if user is empty or not in DB yet
       if (!user?.id) return [];
-      const { data } = await supabase.from('employee_skills').select('*, skills(name, category)').eq('employee_id', user.id);
+      const { data } = await supabase
+        .from('employee_skills')
+        .select('id, proficiency, self_rated, skills(name, category)')
+        .eq('employee_id', user.id);
       return data || [];
     },
-    enabled: !!user?.id
+    enabled: !!user?.id,
   });
 
   const getLevelValue = (level: string) => {
-    switch(level) {
-      case 'Expert': return 100;
-      case 'Advanced': return 75;
-      case 'Intermediate': return 50;
-      case 'Beginner': return 25;
-      default: return 0;
+    switch (level) {
+      case 'expert':
+        return 100;
+      case 'advanced':
+        return 75;
+      case 'intermediate':
+        return 50;
+      case 'beginner':
+        return 25;
+      default:
+        return 0;
     }
   };
 
-  const radarData = skills && skills.length > 0 
-    ? skills.map((s: any) => ({
-        subject: s.skills?.name || 'Unknown',
-        level: getLevelValue(s.proficiency_level),
-        fullMark: 100
+  const radarData = skills && skills.length > 0
+    ? skills.slice(0, 6).map((skill: any) => ({
+        subject: skill.skills?.name || 'Unknown',
+        level: getLevelValue(skill.proficiency),
       }))
-    : MOCK_RADAR_DATA;
+    : [];
+
+  const verifiedCount = (skills || []).filter((skill: any) => !skill.self_rated).length;
+  const selfRatedCount = (skills || []).filter((skill: any) => skill.self_rated).length;
+  const avgProficiency = radarData.length
+    ? Math.round(radarData.reduce((sum, item) => sum + item.level, 0) / radarData.length)
+    : 0;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">My Skill Profile</h2>
-          <p className="text-muted-foreground mt-1">Manage your skills, proficiency levels, and view your competency radar.</p>
-        </div>
-        <button className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md flex items-center gap-2 transition-colors">
-          <Plus className="w-4 h-4"/> Add Skill
-        </button>
-      </div>
+      <section className="glass-panel overflow-hidden rounded-[32px] p-6 md:p-8">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00d4aa]/55 to-transparent" />
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#00d4aa]/20 bg-[#00d4aa]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#00d4aa]">
+              <Sparkles className="h-3.5 w-3.5" />
+              Employee Identity
+            </div>
+            <div className="mt-6 flex flex-col gap-5 md:flex-row md:items-center">
+              <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/10 bg-white/5 text-[#00d4aa]">
+                <UserCircle2 className="h-14 w-14" />
+              </div>
+              <div>
+                <h2 className="text-3xl font-black tracking-[-0.03em]">{profile?.full_name || 'Employee Profile'}</h2>
+                <p className="mt-2 text-sm text-white/60">
+                  {profile?.job_title || 'Growth-focused contributor'} · {profile?.department || 'Engineering'} · Joined 2026
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-[#00d4aa]/25 bg-[#00d4aa]/10 px-3 py-1.5 text-xs font-semibold text-[#00d4aa]">
+                    Verified skills: {verifiedCount}
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/75">
+                    Self-rated skills: {selfRatedCount}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Radar Chart Panel */}
-        <div className="bg-card border shadow-sm rounded-lg p-6 flex flex-col">
-          <h3 className="font-semibold text-lg mb-4">Competency Map</h3>
-          <div className="flex-1 min-h-[400px]">
-             <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                <PolarGrid stroke="#e5e7eb" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: 'currentColor', fontSize: 12 }} />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} stroke="transparent" />
-                <Radar name="My Skills" dataKey="level" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.4} />
-              </RadarChart>
-            </ResponsiveContainer>
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+            <ProfileMetric label="Skill Signals" value={`${skills?.length || 0}`} detail="Capabilities tracked" />
+            <ProfileMetric label="Average Strength" value={`${avgProficiency}%`} detail="Current competency baseline" />
+            <ProfileMetric label="Readiness" value={avgProficiency >= 70 ? 'High' : avgProficiency >= 45 ? 'Building' : 'Early'} detail="Current role fit confidence" />
           </div>
         </div>
+      </section>
 
-        {/* Skill List Panel */}
-        <div className="bg-card border shadow-sm rounded-lg overflow-hidden flex flex-col">
-           <div className="p-6 border-b flex justify-between items-center bg-secondary/20">
-             <h3 className="font-semibold text-lg">Verified Skills Matrix</h3>
-           </div>
-           <div className="flex-1 overflow-y-auto p-0">
-             <table className="w-full text-sm text-left">
-              <thead className="bg-secondary/40 text-secondary-foreground font-medium">
+      <div className="grid gap-6 xl:grid-cols-[1fr_1.1fr]">
+        <section className="glass-panel card-float rounded-[30px] p-6">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#00d4aa]">Competency Radar</div>
+              <h3 className="mt-2 text-2xl font-bold">Verified vs. self-view</h3>
+            </div>
+            <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10">
+              <Plus className="h-4 w-4" />
+              Add Skill
+            </button>
+          </div>
+          <div className="h-[400px]">
+            {radarData.length > 0 ? (
+              <AnimatedRadar data={radarData} />
+            ) : (
+              <div className="flex h-full items-center justify-center rounded-[24px] border border-dashed border-white/10 bg-white/5 text-sm text-white/45">
+                No skills yet.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="glass-panel card-float overflow-hidden rounded-[30px]">
+          <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f0a500]">Skills Matrix</div>
+              <h3 className="mt-2 text-2xl font-bold">Verified Skills Ledger</h3>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-white/[0.03] text-white/55">
                 <tr>
-                  <th className="px-6 py-3">Skill</th>
-                  <th className="px-6 py-3">Category</th>
-                  <th className="px-6 py-3">Proficiency</th>
-                  <th className="px-6 py-3 text-right">Status</th>
+                  <th className="px-6 py-4 font-medium">Skill</th>
+                  <th className="px-6 py-4 font-medium">Domain</th>
+                  <th className="px-6 py-4 font-medium">Level</th>
+                  <th className="px-6 py-4 text-right font-medium">Validation</th>
                 </tr>
               </thead>
               <tbody>
-                {/* Fallback to mock loop if empty */}
-                {(skills && skills.length > 0 ? skills : [
-                  { id: 1, skills: { name: 'React', category: 'Technical' }, proficiency_level: 'Expert', is_verified: true },
-                  { id: 2, skills: { name: 'Node.js', category: 'Technical'}, proficiency_level: 'Intermediate', is_verified: false },
-                  { id: 3, skills: { name: 'Team Leadership', category: 'Soft Skills'}, proficiency_level: 'Advanced', is_verified: true }
-                ]).map((s: any) => (
-                  <tr key={s.id} className="border-b last:border-0 hover:bg-secondary/10 group cursor-pointer">
-                    <td className="px-6 py-4 font-medium flex items-center justify-between">
-                      {s.skills?.name}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">{s.skills?.category}</td>
+                {(skills || []).map((skill: any) => (
+                  <tr key={skill.id} className="border-t border-white/6 transition hover:bg-white/[0.03]">
+                    <td className="px-6 py-4 font-semibold text-white">{skill.skills?.name}</td>
+                    <td className="px-6 py-4 text-white/55">{skill.skills?.category}</td>
                     <td className="px-6 py-4">
-                      <span className="bg-secondary px-2 py-1 rounded text-xs">{s.proficiency_level}</span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
+                        {skill.proficiency}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-right flex justify-end items-center gap-2">
-                       {s.is_verified ? (
-                         <span className="flex items-center gap-1 text-green-600 text-xs font-semibold bg-green-500/10 px-2 py-1 rounded">
-                           <ShieldCheck className="w-3.5 h-3.5" /> Verified
-                         </span>
-                       ) : (
-                         <span className="text-muted-foreground text-xs px-2 py-1 border rounded">Unverified</span>
-                       )}
-                       <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-black/5 rounded"><Pencil className="w-4 h-4 text-muted-foreground"/></button>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        {skill.self_rated ? (
+                          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/55">
+                            Self Rated
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-[#00d4aa]/20 bg-[#00d4aa]/10 px-3 py-1 text-xs font-semibold text-[#00d4aa]">
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            Verified
+                          </span>
+                        )}
+                        <button className="rounded-full border border-white/10 bg-white/5 p-2 text-white/45 transition hover:bg-white/10 hover:text-white">
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
+                {isLoading && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-10 text-center text-white/45">
+                      Loading profile skills...
+                    </td>
+                  </tr>
+                )}
+                {!isLoading && (!skills || skills.length === 0) && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-10 text-center text-white/45">
+                      No skills recorded yet.
+                    </td>
+                  </tr>
+                )}
               </tbody>
-             </table>
-           </div>
-        </div>
+            </table>
+          </div>
+        </section>
       </div>
+    </div>
+  );
+}
+
+function ProfileMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">{label}</div>
+      <div className="mt-2 text-3xl font-black">{value}</div>
+      <div className="mt-2 text-sm text-white/52">{detail}</div>
+    </div>
+  );
+}
+
+function AnimatedRadar({ data }: { data: Array<{ subject: string; level: number }> }) {
+  const size = 360;
+  const center = size / 2;
+  const radius = 120;
+
+  const points = data.map((item, index) => {
+    const angle = (Math.PI * 2 * index) / data.length - Math.PI / 2;
+    const x = center + Math.cos(angle) * radius * (item.level / 100);
+    const y = center + Math.sin(angle) * radius * (item.level / 100);
+    const labelX = center + Math.cos(angle) * (radius + 38);
+    const labelY = center + Math.sin(angle) * (radius + 38);
+    return { ...item, angle, x, y, labelX, labelY };
+  });
+
+  const polygonPoints = points.map((point) => `${point.x},${point.y}`).join(' ');
+
+  return (
+    <div className="flex h-full items-center justify-center">
+      <svg viewBox={`0 0 ${size} ${size}`} className="max-h-full w-full">
+        {[1, 0.75, 0.5, 0.25].map((scale) => (
+          <polygon
+            key={scale}
+            points={data
+              .map((_, index) => {
+                const angle = (Math.PI * 2 * index) / data.length - Math.PI / 2;
+                const x = center + Math.cos(angle) * radius * scale;
+                const y = center + Math.sin(angle) * radius * scale;
+                return `${x},${y}`;
+              })
+              .join(' ')}
+            fill="none"
+            stroke="rgba(255,255,255,0.08)"
+          />
+        ))}
+
+        {points.map((point) => (
+          <g key={point.subject}>
+            <line x1={center} y1={center} x2={point.labelX - 12 * Math.cos(point.angle)} y2={point.labelY - 12 * Math.sin(point.angle)} stroke="rgba(255,255,255,0.08)" />
+            <text x={point.labelX} y={point.labelY} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.62)" fontSize="12">
+              {point.subject}
+            </text>
+          </g>
+        ))}
+
+        <polygon points={polygonPoints} fill="rgba(0,212,170,0.16)" stroke="rgba(0,212,170,0.95)" strokeWidth="3" className="radar-draw" />
+        {points.map((point) => (
+          <circle key={`${point.subject}-node`} cx={point.x} cy={point.y} r="5" fill="#0d0e14" stroke="#00d4aa" strokeWidth="3" />
+        ))}
+      </svg>
     </div>
   );
 }

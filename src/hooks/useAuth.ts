@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 
@@ -6,9 +6,10 @@ export interface UserProfile {
   id: string;
   full_name: string;
   email: string;
-  role: 'employee' | 'hr_manager' | 'org_admin';
+  role: 'employee' | 'hr_manager' | 'org_admin' | 'team_lead';
   department?: string;
   job_title?: string;
+  target_role?: string;
 }
 
 export function useAuth() {
@@ -56,7 +57,7 @@ export function useAuth() {
 
       return () => subscription.unsubscribe();
     } catch(e) {
-      console.warn("Supabase auth error. Simulating unauthenticated state.");
+      console.warn('Supabase auth error. Simulating unauthenticated state.');
       setLoading(false);
     }
   }, []);
@@ -67,15 +68,41 @@ export function useAuth() {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
-        
+        .maybeSingle();
+
       if (error) {
         console.error('Error fetching profile:', error);
       } else if (data) {
         setProfile(data as UserProfile);
+      } else {
+        // Self-heal legacy users who exist in auth but do not yet have a profile row.
+        const { data: userData } = await supabase.auth.getUser();
+        const email = userData.user?.email ?? '';
+        const fullName = (userData.user?.user_metadata?.full_name as string | undefined) || email.split('@')[0] || 'New User';
+        const role = (userData.user?.user_metadata?.role as UserProfile['role'] | undefined) || 'employee';
+
+        const { data: created, error: createError } = await supabase
+          .from('profiles')
+          .upsert(
+            {
+              id: userId,
+              email,
+              full_name: fullName,
+              role,
+            },
+            { onConflict: 'id' }
+          )
+          .select('*')
+          .maybeSingle();
+
+        if (createError) {
+          console.error('Error creating missing profile:', createError);
+        } else if (created) {
+          setProfile(created as UserProfile);
+        }
       }
     } catch(e) {
-      console.warn("Failed to fetch profile");
+      console.warn('Failed to fetch profile');
     } finally {
       setLoading(false);
     }
