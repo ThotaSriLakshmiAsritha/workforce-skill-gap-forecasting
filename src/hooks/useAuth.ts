@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth as useAuthContext } from '../context/AuthContext';
+import { signOut as signOutFromSupabase } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 
 export interface UserProfile {
@@ -66,9 +67,13 @@ export function useAuth() {
   const loading = authLoading || profileLoading;
   const value = useMemo(() => ({ user, profile, loading }), [user, profile, loading]);
 
-  const signOut = () => {
-    void supabase.auth.signOut();
-    window.location.href = '/login';
+  const signOut = async () => {
+    try {
+      await signOutFromSupabase();
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Failed to sign out.', error);
+    }
   };
 
   return { ...value, signOut };
