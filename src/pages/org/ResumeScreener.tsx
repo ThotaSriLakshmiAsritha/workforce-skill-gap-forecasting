@@ -255,9 +255,9 @@ export default function ResumeScreener() {
     : 0;
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600 border-green-500 bg-green-50';
-    if (score >= 60) return 'text-amber-600 border-amber-500 bg-amber-50';
-    return 'text-red-600 border-red-500 bg-red-50';
+    if (score >= 80) return 'text-brand-textPri border-brand-borderHi bg-brand-elevated';
+    if (score >= 60) return 'text-brand-textSec border-brand-borderHi bg-brand-elevated';
+    return 'text-brand-textPri border-brand-borderHi bg-brand-elevated';
   };
 
   const currentRequirement = jobRequirements.find((requirement) => requirement.id === jobId);
@@ -293,7 +293,7 @@ export default function ResumeScreener() {
               <div>
                 <label className="mb-1 block font-medium">Project Name</label>
                 <input
-                  className="w-full rounded-2xl border border-white/10 bg-[#10131b] px-3 py-2.5 text-white placeholder:text-white/30"
+                  className="w-full rounded-2xl border border-brand-border bg-brand-elevated px-3 py-2.5 text-brand-textPri placeholder:text-brand-textTer"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
                   placeholder="Customer Support Intelligence Hub"
@@ -302,7 +302,7 @@ export default function ResumeScreener() {
               <div>
                 <label className="mb-1 block font-medium">Target Job Role</label>
                 <select
-                  className="w-full rounded-2xl border border-white/10 bg-[#10131b] px-3 py-2.5 text-white"
+                  className="w-full rounded-2xl border border-brand-border bg-brand-elevated px-3 py-2.5 text-brand-textPri"
                   value={jobId}
                   onChange={(e) => setJobId(e.target.value)}
                 >
@@ -319,7 +319,7 @@ export default function ResumeScreener() {
                   type="number"
                   min={1}
                   max={10}
-                  className="w-full rounded-2xl border border-white/10 bg-[#10131b] px-3 py-2.5 text-white placeholder:text-white/30"
+                  className="w-full rounded-2xl border border-brand-border bg-brand-elevated px-3 py-2.5 text-brand-textPri placeholder:text-brand-textTer"
                   value={batchSize}
                   onChange={(e) => setBatchSize(Math.max(1, Number(e.target.value) || 1))}
                 />
@@ -336,7 +336,7 @@ export default function ResumeScreener() {
             onDragLeave={onDragLeave}
             onDrop={onDrop}
             className={`rounded-[28px] border-2 border-dashed p-8 text-center transition-colors ${
-              isDragging ? 'border-[#00d4aa] bg-[#00d4aa]/6' : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.06]'
+              isDragging ? 'border-brand-textPri bg-brand-textPri/6' : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.06]'
             } ${uploading ? 'pointer-events-none opacity-60' : ''}`}
           >
             <input
@@ -372,7 +372,7 @@ export default function ResumeScreener() {
           </div>
 
           {uploadError && (
-            <div className="rounded-[20px] border border-red-400/15 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+            <div className="rounded-[20px] border border-brand-borderHi bg-brand-elevated px-4 py-3 text-sm text-brand-textSec">
               {uploadError}
             </div>
           )}
@@ -394,7 +394,7 @@ export default function ResumeScreener() {
                   max="100"
                   value={minScore}
                   onChange={(e) => setMinScore(Number(e.target.value))}
-                  className="w-full accent-[#00d4aa]"
+                  className="w-full accent-white"
                 />
                 <div className="mt-1 flex justify-between text-xs text-muted-foreground">
                   <span>0%</span>
@@ -472,11 +472,11 @@ export default function ResumeScreener() {
             {bestCandidates.length > 0 ? (
               <div className="mt-5 grid gap-4">
                 {bestCandidates.map((candidate, index) => (
-                  <div key={candidate.id} className="rounded-[24px] border border-[#00d4aa]/15 bg-[#00d4aa]/10 p-4">
+                  <div key={candidate.id} className="rounded-[24px] border border-brand-textPri/15 bg-brand-textPri/10 p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white">
+                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-textPri text-xs font-bold text-white">
                             {index + 1}
                           </span>
                           <h3 className="text-lg font-bold">{candidate.candidate_name}</h3>
@@ -487,7 +487,7 @@ export default function ResumeScreener() {
                         </p>
                         {candidate.summary && <p className="mt-2 text-sm text-muted-foreground">{candidate.summary}</p>}
                       </div>
-                      <div className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm font-bold text-[#9af4df] shadow-sm">
+                      <div className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm font-bold text-brand-textPri shadow-sm">
                         {candidate.match_score}% Match
                       </div>
                     </div>
@@ -553,13 +553,13 @@ export default function ResumeScreener() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <button
-                          className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-3 py-1.5 text-sm font-semibold text-green-700 transition hover:bg-green-500/20"
+                          className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-brand-elevated px-3 py-1.5 text-sm font-semibold text-brand-textSec transition hover:border-brand-borderHi"
                           onClick={() => updateCandidateStatus(candidate.id, 'shortlisted')}
                         >
                           <CheckCircle2 className="h-4 w-4" /> Shortlist
                         </button>
                         <button
-                          className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-500/20"
+                          className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-brand-elevated px-3 py-1.5 text-sm font-semibold text-brand-textSec transition hover:border-brand-borderHi"
                           onClick={() => updateCandidateStatus(candidate.id, 'rejected')}
                         >
                           <XCircle className="h-4 w-4" /> Reject
@@ -596,13 +596,13 @@ export default function ResumeScreener() {
                             candidate.missing_skills.map((skill) => (
                               <span
                                 key={skill}
-                                className="rounded-full border border-red-400/15 bg-red-400/10 px-2.5 py-1 text-xs font-medium text-red-200"
+                                className="rounded-full border border-brand-borderHi bg-brand-elevated px-2.5 py-1 text-xs font-medium text-brand-textSec"
                               >
                                 {skill}
                               </span>
                             ))
                           ) : (
-                            <span className="text-xs text-green-700">No critical gaps detected.</span>
+                            <span className="text-xs text-brand-textSec">No critical gaps detected.</span>
                           )}
                         </div>
                       </div>
@@ -661,10 +661,10 @@ function InsightCard({
 }) {
   const toneClasses =
     tone === 'success'
-      ? 'bg-green-50 text-green-700 border-green-100'
+      ? 'bg-brand-elevated text-brand-textSec border-brand-border'
       : tone === 'warning'
-      ? 'bg-amber-50 text-amber-700 border-amber-100'
-      : 'bg-sky-50 text-sky-700 border-sky-100';
+      ? 'bg-brand-elevated text-brand-textSec border-brand-border'
+      : 'bg-brand-elevated text-brand-textSec border-brand-border';
 
   return (
     <div className={`rounded-[24px] border p-4 shadow-sm ${toneClasses}`}>

@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { ThemeToggle } from '../ThemeToggle';
 
 interface WorkspaceNavItem {
   to: string;
@@ -24,8 +25,8 @@ interface WorkspaceShellProps {
   subtitle: string;
   roleLabel: string;
   homeHref: string;
-  switchHref: string;
-  switchLabel: string;
+  switchHref?: string;
+  switchLabel?: string;
   navItems: WorkspaceNavItem[];
 }
 
@@ -67,8 +68,8 @@ export function WorkspaceShell({
   }, [location.pathname]);
 
   const quickActions = useMemo(
-    () =>
-      [
+    () => {
+      const actions = [
         ...navItems.map((item) => ({
           id: item.to,
           label: item.label,
@@ -76,45 +77,51 @@ export function WorkspaceShell({
           action: () => navigate(item.to),
         })),
         {
-          id: switchHref,
-          label: switchLabel,
-          description: 'Switch workspace perspective',
-          action: () => navigate(switchHref),
-        },
-        {
           id: homeHref,
           label: 'Return Home',
           description: 'Open the landing page',
           action: () => navigate(homeHref),
         },
-      ].filter((item) =>
+      ];
+
+      if (switchHref && switchLabel) {
+        actions.push({
+          id: switchHref,
+          label: switchLabel,
+          description: 'Switch workspace perspective',
+          action: () => navigate(switchHref),
+        });
+      }
+
+      return actions.filter((item) =>
         [item.label, item.description].join(' ').toLowerCase().includes(query.trim().toLowerCase())
-      ),
+      );
+    },
     [homeHref, navItems, navigate, query, switchHref, switchLabel]
   );
 
   return (
-    <div className="min-h-screen bg-[#0d0e14] text-white">
+    <div className="min-h-screen bg-brand-bg text-brand-textPri">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute left-[-8%] top-[-12%] h-80 w-80 rounded-full bg-[#00d4aa]/12 blur-3xl" />
-        <div className="absolute right-[-10%] top-[8%] h-96 w-96 rounded-full bg-[#7c6af7]/14 blur-3xl" />
-        <div className="absolute bottom-[-14%] left-[24%] h-96 w-96 rounded-full bg-[#f0a500]/12 blur-3xl" />
+        <div className="absolute left-[-8%] top-[-12%] h-80 w-80 rounded-full bg-white/8 blur-3xl" />
+        <div className="absolute right-[-10%] top-[8%] h-96 w-96 rounded-full bg-white/6 blur-3xl" />
+        <div className="absolute bottom-[-14%] left-[24%] h-96 w-96 rounded-full bg-white/5 blur-3xl" />
       </div>
 
       <div className="relative mx-auto flex min-h-screen max-w-[1600px]">
         <aside
-          className={`hidden border-r border-white/10 bg-white/5 backdrop-blur-xl transition-all duration-300 md:flex md:flex-col ${
+          className={`hidden border-r border-brand-border bg-brand-surface backdrop-blur-xl transition-all duration-300 md:flex md:flex-col ${
             collapsed ? 'w-24' : 'w-80'
           }`}
         >
-          <div className="flex items-center justify-between border-b border-white/10 px-5 py-5">
+          <div className="flex items-center justify-between border-b border-brand-border px-5 py-5">
             <Link to="/" className={`inline-flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#00d4aa] to-[#7c6af7] text-sm font-black text-[#0d0e14]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-md bg-brand-textPri font-mono text-sm font-black text-brand-bg">
                 SS
               </div>
               {!collapsed && (
                 <div>
-                  <div className="text-sm font-semibold uppercase tracking-[0.28em] text-[#00d4aa]">{badge}</div>
+                  <div className="font-mono text-sm font-semibold uppercase tracking-[0.28em] text-brand-textSec">{badge}</div>
                   <div className="text-lg font-bold">{title}</div>
                 </div>
               )}
@@ -122,15 +129,15 @@ export function WorkspaceShell({
             <button
               type="button"
               onClick={() => setCollapsed((value) => !value)}
-              className="rounded-2xl border border-white/10 bg-white/5 p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
+              className="rounded border border-brand-border bg-brand-elevated p-2 text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri"
             >
               <ChevronsLeft className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
             </button>
           </div>
 
           {!collapsed && (
-            <div className="border-b border-white/10 px-5 py-5">
-              <p className="text-sm text-white/65">{subtitle}</p>
+            <div className="border-b border-brand-border px-5 py-5">
+              <p className="text-sm text-brand-textSec">{subtitle}</p>
             </div>
           )}
 
@@ -141,10 +148,10 @@ export function WorkspaceShell({
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                  `flex items-center gap-3 rounded px-4 py-3 font-mono text-sm font-medium transition ${
                     isActive
-                      ? 'border border-[#00d4aa]/40 bg-[#00d4aa]/14 text-white shadow-[0_0_0_1px_rgba(0,212,170,0.08)]'
-                      : 'border border-transparent text-white/65 hover:border-white/10 hover:bg-white/5 hover:text-white'
+                      ? 'border border-brand-borderHi bg-brand-elevated text-brand-textPri shadow-[0_0_0_1px_#2E2E2E]'
+                      : 'border border-transparent text-brand-textSec hover:border-brand-border hover:bg-brand-elevated hover:text-brand-textPri'
                   } ${collapsed ? 'justify-center' : ''}`
                 }
               >
@@ -154,20 +161,22 @@ export function WorkspaceShell({
             ))}
           </nav>
 
-          <div className="border-t border-white/10 px-4 py-4">
-            <Link
-              to={switchHref}
-              className={`mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/10 ${
-                collapsed ? 'justify-center' : ''
-              }`}
-            >
-              <Sparkles className="h-4 w-4 shrink-0 text-[#f0a500]" />
-              {!collapsed && switchLabel}
-            </Link>
+          <div className="border-t border-brand-border px-4 py-4">
+            {switchHref && switchLabel ? (
+              <Link
+                to={switchHref}
+                className={`mb-3 flex items-center gap-3 rounded border border-brand-border bg-brand-elevated px-4 py-3 font-mono text-sm font-medium text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri ${
+                  collapsed ? 'justify-center' : ''
+                }`}
+              >
+                <Sparkles className="h-4 w-4 shrink-0 text-brand-textPri" />
+                {!collapsed && switchLabel}
+              </Link>
+            ) : null}
             <button
               type="button"
               onClick={signOut}
-              className={`flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white ${
+              className={`flex w-full items-center gap-3 rounded border border-brand-border bg-brand-elevated px-4 py-3 font-mono text-sm font-medium text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri ${
                 collapsed ? 'justify-center' : ''
               }`}
             >
@@ -178,10 +187,10 @@ export function WorkspaceShell({
         </aside>
 
         <div className="flex min-h-screen flex-1 flex-col">
-          <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0d0e14]/70 backdrop-blur-xl">
+          <header className="sticky top-0 z-20 border-b border-brand-border bg-brand-bg/85 backdrop-blur-xl">
             <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-8">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.28em] text-[#00d4aa]">{roleLabel}</div>
+                <div className="font-mono text-xs font-semibold uppercase tracking-[0.28em] text-brand-textTer">{roleLabel}</div>
                 <div className="text-xl font-bold">{profile?.full_name || 'SkillSync User'}</div>
               </div>
 
@@ -189,24 +198,25 @@ export function WorkspaceShell({
                 <button
                   type="button"
                   onClick={() => setPaletteOpen(true)}
-                  className="hidden min-w-[280px] items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/55 transition hover:bg-white/10 md:flex"
+                  className="hidden min-w-[280px] items-center gap-3 rounded border border-brand-border bg-brand-elevated px-4 py-3 font-mono text-sm text-brand-textTer transition hover:border-brand-borderHi md:flex"
                 >
                   <Search className="h-4 w-4" />
                   Search skills, people, projects
-                  <span className="ml-auto inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[11px] uppercase tracking-[0.2em]">
+                  <span className="ml-auto inline-flex items-center gap-1 rounded border border-brand-border bg-brand-bg px-2 py-1 text-[11px] uppercase tracking-[0.2em]">
                     <Command className="h-3 w-3" />K
                   </span>
                 </button>
-                <div className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/75">
+                <div className="relative inline-flex h-11 w-11 items-center justify-center rounded border border-brand-border bg-brand-elevated text-brand-textSec">
                   <Bell className="h-4 w-4" />
-                  <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-[#f0a500]" />
+                  <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-brand-textPri" />
                 </div>
-                <div className="hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 md:block">
+                <ThemeToggle compact />
+                <div className="hidden rounded border border-brand-border bg-brand-elevated px-4 py-3 font-mono text-sm font-medium text-brand-textSec md:block">
                   {profile?.role || roleLabel}
                 </div>
                 <Link
                   to={homeHref}
-                  className="rounded-2xl border border-white/10 bg-gradient-to-r from-[#00d4aa]/25 to-[#7c6af7]/25 px-4 py-3 text-sm font-semibold text-white transition hover:from-[#00d4aa]/35 hover:to-[#7c6af7]/35"
+                  className="rounded border border-brand-textPri bg-brand-textPri px-4 py-3 font-mono text-sm font-medium text-brand-bg transition hover:bg-brand-bg hover:text-brand-textPri"
                 >
                   Home
                 </Link>
@@ -222,20 +232,20 @@ export function WorkspaceShell({
 
       {paletteOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/55 px-4 pt-24 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-[28px] border border-white/10 bg-[#12141d]/95 shadow-[0_40px_120px_rgba(0,0,0,0.55)]">
-            <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
+          <div className="w-full max-w-2xl rounded-[28px] border border-brand-border bg-brand-elevated/95 shadow-[0_40px_120px_rgba(0,0,0,0.55)]">
+            <div className="flex items-center gap-3 border-b border-brand-border px-5 py-4">
               <Search className="h-4 w-4 text-white/45" />
               <input
                 autoFocus
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Jump to dashboards, pages, or actions..."
-                className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+                className="flex-1 bg-transparent font-mono text-sm text-brand-textPri outline-none placeholder:text-brand-textTer"
               />
               <button
                 type="button"
                 onClick={() => setPaletteOpen(false)}
-                className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/60 transition hover:bg-white/10 hover:text-white"
+                className="rounded border border-brand-border bg-brand-surface p-2 text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -247,17 +257,17 @@ export function WorkspaceShell({
                     key={item.id}
                     type="button"
                     onClick={item.action}
-                    className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition hover:bg-white/5"
+                    className="flex w-full items-center justify-between rounded px-4 py-3 text-left transition hover:bg-brand-surface"
                   >
                     <div>
-                      <div className="font-semibold text-white">{item.label}</div>
-                      <div className="mt-1 text-sm text-white/45">{item.description}</div>
+                      <div className="font-mono font-medium text-brand-textPri">{item.label}</div>
+                      <div className="mt-1 text-sm text-brand-textTer">{item.description}</div>
                     </div>
                     <ArrowHint />
                   </button>
                 ))
               ) : (
-                <div className="px-4 py-8 text-center text-sm text-white/45">No matching actions found.</div>
+                <div className="px-4 py-8 text-center text-sm text-brand-textTer">No matching actions found.</div>
               )}
             </div>
           </div>
@@ -269,7 +279,7 @@ export function WorkspaceShell({
 
 function ArrowHint() {
   return (
-    <div className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-white/45">
+    <div className="inline-flex items-center gap-1 rounded border border-brand-border bg-brand-surface px-2 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-brand-textTer">
       Enter
     </div>
   );

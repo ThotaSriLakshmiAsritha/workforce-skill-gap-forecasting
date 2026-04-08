@@ -15,8 +15,6 @@ export const OrgLayout = () => {
       subtitle="Live staffing visibility, delivery planning, and hiring intelligence in one premium command center."
       roleLabel="Organization"
       homeHref="/"
-      switchHref="/employee/profile"
-      switchLabel="Switch to Employee"
       navItems={navItems}
     />
   );

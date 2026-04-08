@@ -1,12 +1,12 @@
-﻿import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { ProtectedRoute } from './components/ProtectedRoute';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { OrgLayout } from './components/layout/OrgLayout';
 import { EmployeeLayout } from './components/layout/EmployeeLayout';
 import { ErrorFallback } from './components/ErrorFallback';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 import Landing from './pages/Landing';
 import Login from './pages/auth/Login';
-import OAuthCallback from './pages/auth/OAuthCallback';
+import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/org/Dashboard';
 import ProjectAllocator from './pages/org/ProjectAllocator';
 import ResumeScreener from './pages/org/ResumeScreener';
@@ -28,14 +28,21 @@ export const router = createBrowserRouter([
   },
   {
     path: '/auth/callback',
-    element: <OAuthCallback />,
+    element: <AuthCallback />,
+    errorElement: <ErrorFallback />
+  },
+  {
+    path: '/dashboard',
+    element: <Navigate to="/org/dashboard" replace />,
     errorElement: <ErrorFallback />
   },
   {
     path: '/org',
-    element: <ProtectedRoute allowedRoles={['hr_manager', 'org_admin', 'team_lead']} />,
     errorElement: <ErrorFallback />,
     children: [
+      {
+        element: <ProtectedRoute allowedRoles={['org_admin', 'hr_manager', 'team_lead']} />,
+        children: [
       {
         element: <OrgLayout />,
         children: [
@@ -45,13 +52,17 @@ export const router = createBrowserRouter([
           { path: 'screener', element: <ResumeScreener /> }
         ],
       },
+        ]
+      }
     ],
   },
   {
     path: '/employee',
-    element: <ProtectedRoute allowedRoles={['employee']} />,
     errorElement: <ErrorFallback />,
     children: [
+      {
+        element: <ProtectedRoute allowedRoles={['employee']} />,
+        children: [
       {
         element: <EmployeeLayout />,
         children: [
@@ -63,11 +74,13 @@ export const router = createBrowserRouter([
           { path: 'skill-goal', element: <SkillGapToGoal /> }
         ]
       }
+        ]
+      }
     ]
   },
   {
     path: '*',
-    element: <Navigate to="/login" replace />,
+    element: <Navigate to="/" replace />,
     errorElement: <ErrorFallback />
   }
 ]);

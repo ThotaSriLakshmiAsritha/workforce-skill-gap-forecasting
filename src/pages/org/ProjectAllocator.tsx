@@ -407,7 +407,7 @@ export default function ProjectAllocator() {
           <div>
             <label className="text-sm font-medium">Project Name</label>
             <input
-              className="mt-1 w-full rounded-2xl border border-white/10 bg-[#10131b] px-3 py-2.5 text-white placeholder:text-white/30"
+              className="mt-1 w-full rounded-2xl border border-brand-border bg-brand-elevated px-3 py-2.5 text-brand-textPri placeholder:text-brand-textTer"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder="Customer success platform overhaul"
@@ -418,7 +418,7 @@ export default function ProjectAllocator() {
             <input
               type="number"
               min={1}
-              className="mt-1 w-full rounded-2xl border border-white/10 bg-[#10131b] px-3 py-2.5 text-white placeholder:text-white/30"
+              className="mt-1 w-full rounded-2xl border border-brand-border bg-brand-elevated px-3 py-2.5 text-brand-textPri placeholder:text-brand-textTer"
               value={teamSize}
               onChange={(e) => setTeamSize(Number(e.target.value))}
             />
@@ -428,7 +428,7 @@ export default function ProjectAllocator() {
             <input
               type="number"
               min={1}
-              className="mt-1 w-full rounded-2xl border border-white/10 bg-[#10131b] px-3 py-2.5 text-white placeholder:text-white/30"
+              className="mt-1 w-full rounded-2xl border border-brand-border bg-brand-elevated px-3 py-2.5 text-brand-textPri placeholder:text-brand-textTer"
               value={timelineWeeks}
               onChange={(e) => setTimelineWeeks(Number(e.target.value))}
             />
@@ -436,7 +436,7 @@ export default function ProjectAllocator() {
           <div>
             <label className="text-sm font-medium">Required Skills</label>
             <input
-              className="mt-1 w-full rounded-2xl border border-white/10 bg-[#10131b] px-3 py-2.5 text-white placeholder:text-white/30"
+              className="mt-1 w-full rounded-2xl border border-brand-border bg-brand-elevated px-3 py-2.5 text-brand-textPri placeholder:text-brand-textTer"
               value={requiredSkills}
               onChange={(e) => setRequiredSkills(e.target.value)}
               placeholder="React, Node.js, Power BI"
@@ -445,7 +445,7 @@ export default function ProjectAllocator() {
           <div className="md:col-span-2">
             <label className="text-sm font-medium">Project Description</label>
             <textarea
-              className="mt-1 w-full rounded-2xl border border-white/10 bg-[#10131b] px-3 py-2.5 text-white placeholder:text-white/30"
+              className="mt-1 w-full rounded-2xl border border-brand-border bg-brand-elevated px-3 py-2.5 text-brand-textPri placeholder:text-brand-textTer"
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -483,7 +483,7 @@ export default function ProjectAllocator() {
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="glass-panel flex min-h-[640px] flex-col overflow-hidden rounded-[28px]">
-          <div className="flex h-16 items-center gap-2 border-b border-white/10 bg-white/[0.03] px-5 font-semibold text-[#00d4aa]">
+          <div className="flex h-16 items-center gap-2 border-b border-white/10 bg-white/[0.03] px-5 font-semibold text-brand-textPri">
             <Bot className="h-5 w-5" />
             Allocation Agent
           </div>
@@ -525,13 +525,13 @@ export default function ProjectAllocator() {
             )}
           </div>
 
-          <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-white/10 bg-[#0d0e14]/65 px-5 py-4">
+          <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-white/10 bg-brand-bg/65 px-5 py-4">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask for team refinements, tradeoffs, or backup recommendations..."
-              className="flex-1 rounded-2xl border border-white/10 bg-[#10131b] px-4 py-3 text-white placeholder:text-white/30 outline-none focus:ring-2 ring-[#00d4aa]/30"
+              className="flex-1 rounded-2xl border border-brand-border bg-brand-elevated px-4 py-3 text-brand-textPri placeholder:text-brand-textTer outline-none focus:ring-2 ring-white/30"
               disabled={loading}
             />
             <button
@@ -547,7 +547,7 @@ export default function ProjectAllocator() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-xl font-bold">
-              <Sparkles className="h-5 w-5 text-amber-500" />
+              <Sparkles className="h-5 w-5 text-brand-textPri" />
               Recommended Team
             </h3>
             <button
@@ -600,7 +600,7 @@ export default function ProjectAllocator() {
                     </div>
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-bold ${
-                        match.match_score >= 80 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                        match.match_score >= 80 ? 'bg-brand-elevated text-brand-textSec' : 'bg-brand-elevated text-brand-textSec'
                       }`}
                     >
                       {match.match_score}% Match
@@ -627,12 +627,12 @@ export default function ProjectAllocator() {
                       <div className="flex flex-wrap gap-2">
                         {match.gap_skills.length > 0 ? (
                           match.gap_skills.map((skill) => (
-                            <span key={skill} className="rounded-full border border-red-400/15 bg-red-400/10 px-2.5 py-1 text-xs font-medium text-red-200">
+                            <span key={skill} className="rounded-full border border-brand-borderHi bg-brand-elevated px-2.5 py-1 text-xs font-medium text-brand-textSec">
                               {skill}
                             </span>
                           ))
                         ) : (
-                          <span className="text-xs text-green-700">No critical gap skills detected.</span>
+                          <span className="text-xs text-brand-textSec">No critical gap skills detected.</span>
                         )}
                       </div>
                     </div>
@@ -669,7 +669,7 @@ export default function ProjectAllocator() {
                   </div>
                   {externalCandidates.length > 0 ? (
                     externalCandidates.map((candidate) => (
-                      <div key={candidate.id} className="rounded-[28px] border border-sky-400/15 bg-sky-400/10 p-5 shadow-sm backdrop-blur-xl">
+                      <div key={candidate.id} className="rounded-[28px] border border-brand-border bg-brand-elevated p-5 shadow-sm backdrop-blur-xl">
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <h4 className="text-lg font-bold">{candidate.candidate_name || 'External Candidate'}</h4>
@@ -678,7 +678,7 @@ export default function ProjectAllocator() {
                               {candidate.candidate_email ? ` · ${candidate.candidate_email}` : ''}
                             </div>
                           </div>
-                          <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-700">
+                          <span className="rounded-full bg-brand-elevated px-3 py-1 text-xs font-bold text-brand-textSec">
                             {candidate.match_score}% Match
                           </span>
                         </div>
@@ -705,12 +705,12 @@ export default function ProjectAllocator() {
                             <div className="flex flex-wrap gap-2">
                               {candidate.missing_skills.length > 0 ? (
                                 candidate.missing_skills.map((skill) => (
-                                  <span key={skill} className="rounded-full border border-red-400/15 bg-red-400/10 px-2.5 py-1 text-xs font-medium text-red-200">
+                                  <span key={skill} className="rounded-full border border-brand-borderHi bg-brand-elevated px-2.5 py-1 text-xs font-medium text-brand-textSec">
                                     {skill}
                                   </span>
                                 ))
                               ) : (
-                                <span className="text-xs text-green-700">No critical gaps detected.</span>
+                                <span className="text-xs text-brand-textSec">No critical gaps detected.</span>
                               )}
                             </div>
                           </div>

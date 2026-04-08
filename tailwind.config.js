@@ -7,6 +7,11 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        display: ['"Playfair Display"', 'serif'],
+        mono: ['"DM Mono"', 'monospace'],
+        sans: ['"DM Sans"', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -40,6 +45,16 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        brand: {
+          bg: 'rgb(var(--brand-bg) / <alpha-value>)',
+          surface: 'rgb(var(--brand-surface) / <alpha-value>)',
+          elevated: 'rgb(var(--brand-elevated) / <alpha-value>)',
+          border: 'rgb(var(--brand-border) / <alpha-value>)',
+          borderHi: 'rgb(var(--brand-border-hi) / <alpha-value>)',
+          textPri: 'rgb(var(--brand-text-pri) / <alpha-value>)',
+          textSec: 'rgb(var(--brand-text-sec) / <alpha-value>)',
+          textTer: 'rgb(var(--brand-text-ter) / <alpha-value>)',
         },
       },
       borderRadius: {

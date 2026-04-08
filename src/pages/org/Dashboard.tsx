@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { Users, CheckCircle, TrendingUp, BookOpen, CalendarClock, Activity } from 'lucide-react';
 
-const COLORS = ['#00d4aa', '#7c6af7', '#f0a500', '#ff7a59', '#4fd1ff'];
+const COLORS = ['#FFFFFF', '#A3A3A3', '#5C5C5C', '#2E2E2E', '#111111'];
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useQuery({
@@ -113,19 +113,19 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="glass-panel rounded-[32px] p-6 md:p-8">
+      <section className="rounded-[32px] border border-brand-border bg-brand-surface p-6 md:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-[#00d4aa]">Organization Pulse</div>
+            <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-brand-textTer">CONTROL ROOM</div>
             <h2 className="mt-3 text-4xl font-black tracking-[-0.04em]">Workforce Overview</h2>
-            <p className="mt-3 max-w-2xl text-sm text-white/60">
+            <p className="mt-3 max-w-2xl text-sm text-brand-textSec">
               Live visibility into workforce health, department spread, skill coverage, and the learning momentum behind your delivery pipeline.
             </p>
           </div>
-          <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">Latest Snapshot</div>
-            <div className="mt-2 flex items-center gap-2 text-sm text-white/70">
-              <CalendarClock className="h-4 w-4 text-[#f0a500]" />
+          <div className="rounded-[24px] border border-brand-border bg-brand-elevated px-5 py-4">
+            <div className="font-mono text-xs font-semibold uppercase tracking-[0.22em] text-brand-textTer">Latest Snapshot</div>
+            <div className="mt-2 flex items-center gap-2 text-sm text-brand-textSec">
+              <CalendarClock className="h-4 w-4 text-brand-textPri" />
               Workforce data refreshed for executive review
             </div>
           </div>
@@ -133,20 +133,20 @@ export default function Dashboard() {
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Total Employees" value={stats?.totalEmployees || 0} icon={<Users className="h-5 w-5" />} tone="teal" />
-        <MetricCard title="Available Staff" value={stats?.availableCount || 0} icon={<CheckCircle className="h-5 w-5" />} tone="green" />
-        <MetricCard title="Skill Gap Index" value={`${stats?.skillGapIndex || 0}%`} icon={<TrendingUp className="h-5 w-5" />} tone="amber" />
-        <MetricCard title="Training Completion" value={`${stats?.trainingCompletion || 0}%`} icon={<BookOpen className="h-5 w-5" />} tone="violet" />
+        <MetricCard title="Total Employees" value={stats?.totalEmployees || 0} icon={<Users className="h-5 w-5" />} />
+        <MetricCard title="Available Staff" value={stats?.availableCount || 0} icon={<CheckCircle className="h-5 w-5" />} />
+        <MetricCard title="Skill Gap Index" value={`${stats?.skillGapIndex || 0}%`} icon={<TrendingUp className="h-5 w-5" />} />
+        <MetricCard title="Training Completion" value={`${stats?.trainingCompletion || 0}%`} icon={<BookOpen className="h-5 w-5" />} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="glass-panel card-float rounded-[30px] p-6">
+        <section className="card-float rounded-[30px] border border-brand-border bg-brand-surface p-6">
           <div className="mb-5 flex items-center justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#00d4aa]">Department Spread</div>
+              <div className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-textTer">Department Spread</div>
               <h3 className="mt-2 text-2xl font-bold">Team distribution</h3>
             </div>
-            <Activity className="h-5 w-5 text-[#00d4aa]" />
+            <Activity className="h-5 w-5 text-brand-textPri" />
           </div>
           <div className="h-[320px]">
             {stats?.deptData && stats.deptData.length > 0 ? (
@@ -159,52 +159,54 @@ export default function Dashboard() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      background: '#13141c',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: '16px',
-                      color: '#fff',
+                      background: '#0A0A0A',
+                      border: '1px solid #1F1F1F',
+                      borderRadius: '8px',
+                      color: '#FFFFFF',
+                      fontFamily: 'DM Mono',
                     }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-white/45">No department data available</div>
+              <div className="flex h-full items-center justify-center text-brand-textTer">No department data available</div>
             )}
           </div>
         </section>
 
-        <section className="glass-panel card-float rounded-[30px] p-6">
+        <section className="card-float rounded-[30px] border border-brand-border bg-brand-surface p-6">
           <div className="mb-5">
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f0a500]">Availability Mix</div>
+            <div className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-textTer">Availability Mix</div>
             <h3 className="mt-2 text-2xl font-bold">Bench readiness</h3>
           </div>
           <div className="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={availabilityData}>
-                <XAxis dataKey="name" stroke="rgba(255,255,255,0.35)" tickLine={false} axisLine={false} />
-                <YAxis stroke="rgba(255,255,255,0.35)" tickLine={false} axisLine={false} />
+                <XAxis dataKey="name" stroke="#1F1F1F" tickLine={false} axisLine={false} tick={{ fill: '#5C5C5C', fontFamily: 'DM Mono' }} />
+                <YAxis stroke="#1F1F1F" tickLine={false} axisLine={false} tick={{ fill: '#5C5C5C', fontFamily: 'DM Mono' }} />
                 <Tooltip
                   contentStyle={{
-                    background: '#13141c',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '16px',
-                    color: '#fff',
+                    background: '#0A0A0A',
+                    border: '1px solid #1F1F1F',
+                    borderRadius: '8px',
+                    color: '#FFFFFF',
+                    fontFamily: 'DM Mono',
                   }}
                 />
-                <Bar dataKey="value" radius={[12, 12, 0, 0]} fill="#7c6af7" animationDuration={900} />
+                <Bar dataKey="value" radius={[12, 12, 0, 0]} fill="#FFFFFF" animationDuration={900} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </section>
       </div>
 
-      <section className="glass-panel card-float rounded-[30px] p-6">
+      <section className="card-float rounded-[30px] border border-brand-border bg-brand-surface p-6">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f0a500]">Skill Gap Grid</div>
+            <div className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-textTer">Skill Gap Grid</div>
             <h3 className="mt-2 text-2xl font-bold">Coverage heatmap</h3>
           </div>
-          <div className="text-sm text-white/50">Animated severity view</div>
+          <div className="font-mono text-sm text-brand-textTer">Animated severity view</div>
         </div>
         {stats?.skillGapTiles?.length ? (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
@@ -213,10 +215,10 @@ export default function Dashboard() {
                 key={`${tile.skill_id}-${tile.coverage_percentage}`}
                 className={`card-float rounded-[22px] border p-4 text-xs font-medium ${
                   tile.gap_severity === 'critical'
-                    ? 'border-red-400/20 bg-red-400/10 text-red-200'
+                    ? 'border-brand-borderHi bg-brand-elevated text-brand-textSec'
                     : tile.gap_severity === 'moderate'
-                    ? 'border-[#f0a500]/20 bg-[#f0a500]/10 text-[#ffd88a]'
-                    : 'border-[#00d4aa]/20 bg-[#00d4aa]/10 text-[#88f2dd]'
+                    ? 'border-brand-border bg-brand-textTer/10 text-brand-textSec'
+                    : 'border-brand-textPri/20 bg-brand-textPri/10 text-brand-textSec'
                 }`}
                 style={{ animationDelay: `${index * 40}ms` }}
               >
@@ -226,18 +228,18 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <div className="text-sm text-white/45">No snapshots yet. Run the snapshot function to populate this view.</div>
+          <div className="text-sm text-brand-textTer">No snapshots yet. Run the snapshot function to populate this view.</div>
         )}
       </section>
 
-      <section className="glass-panel overflow-hidden rounded-[30px]">
-        <div className="border-b border-white/10 px-6 py-5">
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#00d4aa]">Roster View</div>
+      <section className="overflow-hidden rounded-[30px] border border-brand-border bg-brand-surface">
+        <div className="border-b border-brand-border px-6 py-5">
+          <div className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-textTer">Roster View</div>
           <h3 className="mt-2 text-2xl font-bold">Employee roster</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-white/[0.03] text-white/55">
+            <thead className="bg-brand-elevated text-brand-textSec">
               <tr>
                 <th className="px-6 py-4 font-medium">Name</th>
                 <th className="px-6 py-4 font-medium">Department</th>
@@ -248,12 +250,12 @@ export default function Dashboard() {
             <tbody>
               {stats?.employees?.length ? (
                 stats.employees.map((employee: any) => (
-                  <tr key={employee.id} className="border-t border-white/6 transition hover:bg-white/[0.03]">
-                    <td className="px-6 py-4 font-semibold text-white">{employee.full_name}</td>
-                    <td className="px-6 py-4 text-white/55">{employee.department || 'N/A'}</td>
-                    <td className="px-6 py-4 text-white/70">{employee.job_title || 'N/A'}</td>
+                  <tr key={employee.id} className="border-t border-brand-border transition hover:bg-brand-elevated">
+                    <td className="px-6 py-4 font-semibold text-brand-textPri">{employee.full_name}</td>
+                    <td className="px-6 py-4 text-brand-textSec">{employee.department || 'N/A'}</td>
+                    <td className="px-6 py-4 text-brand-textSec">{employee.job_title || 'N/A'}</td>
                     <td className="px-6 py-4 text-right">
-                      <button className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/10 hover:text-white">
+                      <button className="rounded border border-brand-border bg-brand-elevated px-4 py-2 font-mono text-xs font-semibold text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri">
                         View Profile
                       </button>
                     </td>
@@ -261,7 +263,7 @@ export default function Dashboard() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-white/45">
+                  <td colSpan={4} className="px-6 py-10 text-center text-brand-textTer">
                     No employees found. Seed data or add employees to get started.
                   </td>
                 </tr>
@@ -278,29 +280,18 @@ function MetricCard({
   title,
   value,
   icon,
-  tone,
 }: {
   title: string;
   value: string | number;
   icon: React.ReactNode;
-  tone: 'teal' | 'green' | 'amber' | 'violet';
 }) {
-  const toneClass =
-    tone === 'green'
-      ? 'from-[#00d4aa]/16 to-[#00d4aa]/4 text-[#93f5e0]'
-      : tone === 'amber'
-      ? 'from-[#f0a500]/16 to-[#f0a500]/4 text-[#ffd88a]'
-      : tone === 'violet'
-      ? 'from-[#7c6af7]/16 to-[#7c6af7]/4 text-[#c6bcff]'
-      : 'from-[#4fd1ff]/16 to-[#4fd1ff]/4 text-[#9be6ff]';
-
   return (
-    <div className={`card-float rounded-[28px] border border-white/10 bg-gradient-to-br ${toneClass} p-5`}>
+    <div className="card-float rounded-[28px] border border-brand-border bg-brand-surface p-5 hover:border-brand-borderHi">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">{title}</div>
-        <div>{icon}</div>
+        <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-textTer">{title}</div>
+        <div className="text-brand-textPri">{icon}</div>
       </div>
-      <div className="mt-5 text-4xl font-black text-white">{value}</div>
+      <div className="mt-5 font-display text-4xl font-bold text-brand-textPri">{value}</div>
     </div>
   );
 }

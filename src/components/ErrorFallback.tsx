@@ -19,9 +19,9 @@ export function ErrorFallback() {
         <button
           type="button"
           className="text-sm font-semibold text-primary hover:underline"
-          onClick={() => navigate('/login', { replace: true })}
+          onClick={() => navigate('/', { replace: true })}
         >
-          Go to login
+          Go to home
         </button>
       </div>
     </div>

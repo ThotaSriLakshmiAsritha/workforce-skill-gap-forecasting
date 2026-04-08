@@ -63,7 +63,7 @@ export default function MyLearningPath() {
       <section className="glass-panel rounded-[32px] p-6 md:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#00d4aa]/20 bg-[#00d4aa]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#00d4aa]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-brand-textPri/20 bg-brand-textPri/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-brand-textPri">
               <Sparkles className="h-3.5 w-3.5" />
               Career Momentum
             </div>
@@ -75,7 +75,7 @@ export default function MyLearningPath() {
           <button
             onClick={refreshAI}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#7c6af7] px-5 py-3 text-sm font-semibold text-[#0d0e14] transition hover:translate-y-[-1px] disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-full bg-brand-textPri px-5 py-3 text-sm font-semibold text-brand-bg transition hover:translate-y-[-1px] disabled:opacity-60"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             AI Refresh
@@ -92,7 +92,7 @@ export default function MyLearningPath() {
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <section className="glass-panel card-float rounded-[30px] p-6">
           <div className="mb-5">
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f0a500]">Completion Streak</div>
+            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-textTer">Completion Streak</div>
             <h3 className="mt-2 text-2xl font-bold">Learning consistency map</h3>
           </div>
           <div className="grid grid-cols-7 gap-2">
@@ -101,11 +101,11 @@ export default function MyLearningPath() {
                 key={index}
                 className={`aspect-square rounded-xl border border-white/5 ${
                   intensity === 3
-                    ? 'bg-[#00d4aa]'
+                    ? 'bg-brand-textPri'
                     : intensity === 2
-                    ? 'bg-[#7c6af7]'
+                    ? 'bg-brand-textSec'
                     : intensity === 1
-                    ? 'bg-[#f0a500]/70'
+                    ? 'bg-brand-textTer/70'
                     : 'bg-white/5'
                 }`}
               />
@@ -120,7 +120,7 @@ export default function MyLearningPath() {
           {(courses && courses.length > 0) ? courses.map((course: any, index: number) => (
             <div key={course.id} className="glass-panel card-float rounded-[30px] p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/5 text-[#00d4aa]">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/5 text-brand-textPri">
                   <span className="text-sm font-black">{String(index + 1).padStart(2, '0')}</span>
                 </div>
                 <div className="flex-1">
@@ -141,7 +141,7 @@ export default function MyLearningPath() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {course.priority === 'high' && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-[#f0a500]/20 bg-[#f0a500]/10 px-3 py-1 text-xs font-semibold text-[#f0a500]">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-brand-textTer/10 px-3 py-1 text-xs font-semibold text-brand-textTer">
                           <AlertCircle className="h-3.5 w-3.5" />
                           High Priority
                         </span>
@@ -162,10 +162,10 @@ export default function MyLearningPath() {
                     <div
                       className={`bar-grow h-full rounded-full ${
                         course.status === 'completed'
-                          ? 'w-full bg-[#00d4aa]'
+                          ? 'w-full bg-brand-textPri'
                           : course.status === 'in_progress'
-                          ? 'w-2/3 bg-[#7c6af7]'
-                          : 'w-1/3 bg-[#f0a500]'
+                          ? 'w-2/3 bg-brand-textSec'
+                          : 'w-1/3 bg-brand-textTer'
                       }`}
                     />
                   </div>
@@ -182,7 +182,7 @@ export default function MyLearningPath() {
                     )}
                     {course.status === 'in_progress' && (
                       <button
-                        className="inline-flex items-center gap-2 rounded-full bg-[#00d4aa] px-4 py-2 text-sm font-semibold text-[#0d0e14]"
+                        className="inline-flex items-center gap-2 rounded-full bg-brand-textPri px-4 py-2 text-sm font-semibold text-brand-bg"
                         onClick={() => updateStatus(course.id, 'completed')}
                       >
                         <CheckCircle2 className="h-4 w-4" />
@@ -217,7 +217,7 @@ function LearningMetric({ label, value, detail }: { label: string; value: string
 function StatusBadge({ status }: { status: string }) {
   if (status === 'completed') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-[#00d4aa]/20 bg-[#00d4aa]/10 px-3 py-1 text-xs font-semibold text-[#00d4aa]">
+      <span className="inline-flex items-center gap-1 rounded-full border border-brand-textPri/20 bg-brand-textPri/10 px-3 py-1 text-xs font-semibold text-brand-textPri">
         <CheckCircle2 className="h-3.5 w-3.5" />
         Completed
       </span>
@@ -226,7 +226,7 @@ function StatusBadge({ status }: { status: string }) {
 
   if (status === 'in_progress') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-[#7c6af7]/20 bg-[#7c6af7]/10 px-3 py-1 text-xs font-semibold text-[#b7adff]">
+      <span className="inline-flex items-center gap-1 rounded-full border border-brand-border bg-brand-textSec/10 px-3 py-1 text-xs font-semibold text-brand-textSec">
         <PlayCircle className="h-3.5 w-3.5" />
         In Progress
       </span>
@@ -234,7 +234,7 @@ function StatusBadge({ status }: { status: string }) {
   }
 
   return (
-    <span className="rounded-full border border-[#f0a500]/20 bg-[#f0a500]/10 px-3 py-1 text-xs font-semibold text-[#f0a500]">
+    <span className="rounded-full border border-brand-border bg-brand-textTer/10 px-3 py-1 text-xs font-semibold text-brand-textTer">
       Recommended
     </span>
   );

@@ -1,6 +1,6 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth as useAuthContext } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { User } from '@supabase/supabase-js';
 
 export interface UserProfile {
   id: string;
@@ -13,106 +13,63 @@ export interface UserProfile {
 }
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuthContext();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
-    // Demo Mock Fallback handling
-    const mockRole = sessionStorage.getItem('mockRole');
-    if (mockRole) {
-      setUser({ id: 'mock-user-123', email: 'demo@skillsync.com' } as User);
-      setProfile({
-        id: 'mock-user-123',
-        full_name: 'Demo ' + (mockRole === 'employee' ? 'Employee' : 'HR Manager'),
-        email: 'demo@skillsync.com',
-        role: mockRole as any,
-        department: 'Engineering'
-      });
-      setLoading(false);
-      return;
-    }
+    let mounted = true;
 
-    try {
-      // Get initial session
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          fetchProfile(session.user.id);
-        } else {
-          setLoading(false);
-        }
-      });
-
-      // Listen for auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          fetchProfile(session.user.id);
-        } else {
+    const fetchProfile = async () => {
+      if (!user?.id) {
+        if (mounted) {
           setProfile(null);
-          setLoading(false);
+          setProfileLoading(false);
         }
-      });
+        return;
+      }
 
-      return () => subscription.unsubscribe();
-    } catch(e) {
-      console.warn('Supabase auth error. Simulating unauthenticated state.');
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-      } else if (data) {
-        setProfile(data as UserProfile);
-      } else {
-        // Self-heal legacy users who exist in auth but do not yet have a profile row.
-        const { data: userData } = await supabase.auth.getUser();
-        const email = userData.user?.email ?? '';
-        const fullName = (userData.user?.user_metadata?.full_name as string | undefined) || email.split('@')[0] || 'New User';
-        const role = (userData.user?.user_metadata?.role as UserProfile['role'] | undefined) || 'employee';
-
-        const { data: created, error: createError } = await supabase
+      setProfileLoading(true);
+      try {
+        const { data, error } = await supabase
           .from('profiles')
-          .upsert(
-            {
-              id: userId,
-              email,
-              full_name: fullName,
-              role,
-            },
-            { onConflict: 'id' }
-          )
-          .select('*')
+          .select('id, full_name, email, role, department, job_title, target_role')
+          .eq('id', user.id)
           .maybeSingle();
 
-        if (createError) {
-          console.error('Error creating missing profile:', createError);
-        } else if (created) {
-          setProfile(created as UserProfile);
+        if (error) {
+          throw error;
+        }
+
+        if (mounted) {
+          setProfile((data as UserProfile | null) ?? null);
+        }
+      } catch (error) {
+        console.error('Failed to load user profile.', error);
+        if (mounted) {
+          setProfile(null);
+        }
+      } finally {
+        if (mounted) {
+          setProfileLoading(false);
         }
       }
-    } catch(e) {
-      console.warn('Failed to fetch profile');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    void fetchProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
+
+  const loading = authLoading || profileLoading;
+  const value = useMemo(() => ({ user, profile, loading }), [user, profile, loading]);
 
   const signOut = () => {
-    sessionStorage.removeItem('mockRole');
-    supabase.auth.signOut();
+    void supabase.auth.signOut();
     window.location.href = '/login';
   };
 
-  return { user, profile, loading, signOut };
+  return { ...value, signOut };
 }

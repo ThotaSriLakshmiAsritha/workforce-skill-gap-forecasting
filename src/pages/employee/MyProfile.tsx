@@ -50,27 +50,27 @@ export default function MyProfile() {
   return (
     <div className="space-y-6">
       <section className="glass-panel overflow-hidden rounded-[32px] p-6 md:p-8">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00d4aa]/55 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-textPri/55 to-transparent" />
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#00d4aa]/20 bg-[#00d4aa]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#00d4aa]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-brand-textPri/20 bg-brand-textPri/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-brand-textPri">
               <Sparkles className="h-3.5 w-3.5" />
               Employee Identity
             </div>
             <div className="mt-6 flex flex-col gap-5 md:flex-row md:items-center">
-              <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-white/10 bg-white/5 text-[#00d4aa]">
+              <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-brand-border bg-brand-elevated text-brand-textPri">
                 <UserCircle2 className="h-14 w-14" />
               </div>
               <div>
                 <h2 className="text-3xl font-black tracking-[-0.03em]">{profile?.full_name || 'Employee Profile'}</h2>
-                <p className="mt-2 text-sm text-white/60">
+                <p className="mt-2 text-sm text-brand-textSec">
                   {profile?.job_title || 'Growth-focused contributor'} · {profile?.department || 'Engineering'} · Joined 2026
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-[#00d4aa]/25 bg-[#00d4aa]/10 px-3 py-1.5 text-xs font-semibold text-[#00d4aa]">
+                  <span className="rounded-full border border-brand-textPri/25 bg-brand-textPri/10 px-3 py-1.5 text-xs font-semibold text-brand-textPri">
                     Verified skills: {verifiedCount}
                   </span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/75">
+                  <span className="rounded-full border border-brand-border bg-brand-elevated px-3 py-1.5 text-xs font-semibold text-brand-textSec">
                     Self-rated skills: {selfRatedCount}
                   </span>
                 </div>
@@ -90,10 +90,10 @@ export default function MyProfile() {
         <section className="glass-panel card-float rounded-[30px] p-6">
           <div className="mb-5 flex items-center justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#00d4aa]">Competency Radar</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-textPri">Competency Radar</div>
               <h3 className="mt-2 text-2xl font-bold">Verified vs. self-view</h3>
             </div>
-            <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10">
+            <button className="inline-flex items-center gap-2 rounded-full border border-brand-border bg-brand-elevated px-4 py-2 text-sm font-semibold text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri">
               <Plus className="h-4 w-4" />
               Add Skill
             </button>
@@ -102,7 +102,7 @@ export default function MyProfile() {
             {radarData.length > 0 ? (
               <AnimatedRadar data={radarData} />
             ) : (
-              <div className="flex h-full items-center justify-center rounded-[24px] border border-dashed border-white/10 bg-white/5 text-sm text-white/45">
+              <div className="flex h-full items-center justify-center rounded-[24px] border border-dashed border-brand-border bg-brand-elevated text-sm text-brand-textTer">
                 No skills yet.
               </div>
             )}
@@ -110,16 +110,16 @@ export default function MyProfile() {
         </section>
 
         <section className="glass-panel card-float overflow-hidden rounded-[30px]">
-          <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+          <div className="flex items-center justify-between border-b border-brand-border px-6 py-5">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f0a500]">Skills Matrix</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-textTer">Skills Matrix</div>
               <h3 className="mt-2 text-2xl font-bold">Verified Skills Ledger</h3>
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-white/[0.03] text-white/55">
+              <thead className="bg-brand-elevated text-brand-textSec">
                 <tr>
                   <th className="px-6 py-4 font-medium">Skill</th>
                   <th className="px-6 py-4 font-medium">Domain</th>
@@ -129,27 +129,27 @@ export default function MyProfile() {
               </thead>
               <tbody>
                 {(skills || []).map((skill: any) => (
-                  <tr key={skill.id} className="border-t border-white/6 transition hover:bg-white/[0.03]">
-                    <td className="px-6 py-4 font-semibold text-white">{skill.skills?.name}</td>
-                    <td className="px-6 py-4 text-white/55">{skill.skills?.category}</td>
+                  <tr key={skill.id} className="border-t border-brand-border transition hover:bg-brand-elevated">
+                    <td className="px-6 py-4 font-semibold text-brand-textPri">{skill.skills?.name}</td>
+                    <td className="px-6 py-4 text-brand-textSec">{skill.skills?.category}</td>
                     <td className="px-6 py-4">
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
+                      <span className="rounded-full border border-brand-border bg-brand-elevated px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-textSec">
                         {skill.proficiency}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         {skill.self_rated ? (
-                          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/55">
+                          <span className="rounded-full border border-brand-border bg-brand-elevated px-3 py-1 text-xs font-semibold text-brand-textSec">
                             Self Rated
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-[#00d4aa]/20 bg-[#00d4aa]/10 px-3 py-1 text-xs font-semibold text-[#00d4aa]">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-brand-textPri/20 bg-brand-textPri/10 px-3 py-1 text-xs font-semibold text-brand-textPri">
                             <ShieldCheck className="h-3.5 w-3.5" />
                             Verified
                           </span>
                         )}
-                        <button className="rounded-full border border-white/10 bg-white/5 p-2 text-white/45 transition hover:bg-white/10 hover:text-white">
+                        <button className="rounded-full border border-brand-border bg-brand-elevated p-2 text-brand-textTer transition hover:border-brand-borderHi hover:text-brand-textPri">
                           <Pencil className="h-4 w-4" />
                         </button>
                       </div>
@@ -158,14 +158,14 @@ export default function MyProfile() {
                 ))}
                 {isLoading && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-10 text-center text-white/45">
+                    <td colSpan={4} className="px-6 py-10 text-center text-brand-textTer">
                       Loading profile skills...
                     </td>
                   </tr>
                 )}
                 {!isLoading && (!skills || skills.length === 0) && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-10 text-center text-white/45">
+                    <td colSpan={4} className="px-6 py-10 text-center text-brand-textTer">
                       No skills recorded yet.
                     </td>
                   </tr>
@@ -181,10 +181,10 @@ export default function MyProfile() {
 
 function ProfileMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-      <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">{label}</div>
-      <div className="mt-2 text-3xl font-black">{value}</div>
-      <div className="mt-2 text-sm text-white/52">{detail}</div>
+    <div className="rounded-[24px] border border-brand-border bg-brand-elevated p-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-textTer">{label}</div>
+      <div className="mt-2 text-3xl font-black text-brand-textPri">{value}</div>
+      <div className="mt-2 text-sm text-brand-textSec">{detail}</div>
     </div>
   );
 }
@@ -233,9 +233,9 @@ function AnimatedRadar({ data }: { data: Array<{ subject: string; level: number 
           </g>
         ))}
 
-        <polygon points={polygonPoints} fill="rgba(0,212,170,0.16)" stroke="rgba(0,212,170,0.95)" strokeWidth="3" className="radar-draw" />
+        <polygon points={polygonPoints} fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.9)" strokeWidth="3" className="radar-draw" />
         {points.map((point) => (
-          <circle key={`${point.subject}-node`} cx={point.x} cy={point.y} r="5" fill="#0d0e14" stroke="#00d4aa" strokeWidth="3" />
+          <circle key={`${point.subject}-node`} cx={point.x} cy={point.y} r="5" fill="#000000" stroke="#FFFFFF" strokeWidth="3" />
         ))}
       </svg>
     </div>

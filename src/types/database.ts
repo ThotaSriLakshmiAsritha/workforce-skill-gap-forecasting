@@ -1,4 +1,4 @@
-﻿export type UserRole = 'org_admin' | 'hr_manager' | 'team_lead' | 'employee';
+export type UserRole = 'org_admin' | 'hr_manager' | 'team_lead' | 'employee';
 export type ProficiencyLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
 export type ProjectStatus = 'planning' | 'active' | 'completed' | 'on_hold';
 export type AssignmentStatus = 'active' | 'completed' | 'withdrawn';

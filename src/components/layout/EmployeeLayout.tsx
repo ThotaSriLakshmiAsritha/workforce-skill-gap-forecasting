@@ -16,8 +16,6 @@ export const EmployeeLayout = () => {
       subtitle="Track active work, sharpen your capability map, and turn future roles into an executable roadmap."
       roleLabel="Employee"
       homeHref="/"
-      switchHref="/org/dashboard"
-      switchLabel="Switch to Organization"
       navItems={navItems}
     />
   );
