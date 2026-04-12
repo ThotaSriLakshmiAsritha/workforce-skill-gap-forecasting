@@ -110,7 +110,7 @@ export function WorkspaceShell({
 
       <div className="relative mx-auto flex min-h-screen max-w-[1600px]">
         <aside
-          className={`hidden border-r border-brand-border bg-brand-surface backdrop-blur-xl transition-all duration-300 md:flex md:flex-col ${
+          className={`hidden border-r border-brand-border bg-brand-surface backdrop-blur-xl transition-all duration-300 md:sticky md:top-0 md:flex md:h-screen md:flex-col ${
             collapsed ? 'w-24' : 'w-80'
           }`}
         >
@@ -141,7 +141,7 @@ export function WorkspaceShell({
             </div>
           )}
 
-          <nav className="flex-1 space-y-2 px-4 py-5">
+          <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-5">
             {navItems.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
@@ -161,7 +161,7 @@ export function WorkspaceShell({
             ))}
           </nav>
 
-          <div className="border-t border-brand-border px-4 py-4">
+          <div className="shrink-0 border-t border-brand-border px-4 py-4">
             {switchHref && switchLabel ? (
               <Link
                 to={switchHref}

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ShieldCheck, Plus, Pencil, Sparkles, UserCircle2 } from 'lucide-react';
+import { ShieldCheck, Pencil, Sparkles, UserCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -108,13 +108,6 @@ export default function MyProfile() {
     }
   };
 
-  const radarData = skills && skills.length > 0
-    ? skills.slice(0, 6).map((skill) => ({
-        subject: skill.skills?.name || 'Unknown',
-        level: getLevelValue(skill.proficiency),
-      }))
-    : [];
-
   const showcaseProjects: ShowcaseProject[] = [
     ...((assignedProjects || []).map((assignment) => {
       const start = assignment.projects?.start_date;
@@ -151,8 +144,8 @@ export default function MyProfile() {
 
   const verifiedCount = (skills || []).filter((skill) => !skill.self_rated).length;
   const selfRatedCount = (skills || []).filter((skill) => skill.self_rated).length;
-  const avgProficiency = radarData.length
-    ? Math.round(radarData.reduce((sum, item) => sum + item.level, 0) / radarData.length)
+  const avgProficiency = skills && skills.length > 0
+    ? Math.round(skills.reduce((sum, skill) => sum + getLevelValue(skill.proficiency), 0) / skills.length)
     : 0;
 
   return (
@@ -194,29 +187,7 @@ export default function MyProfile() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1.1fr]">
-        <section className="glass-panel card-float rounded-[30px] p-6">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-textPri">Competency Radar</div>
-              <h3 className="mt-2 text-2xl font-bold">Verified vs. self-view</h3>
-            </div>
-            <button className="inline-flex items-center gap-2 rounded-full border border-brand-border bg-brand-elevated px-4 py-2 text-sm font-semibold text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri">
-              <Plus className="h-4 w-4" />
-              Add Skill
-            </button>
-          </div>
-          <div className="h-[400px]">
-            {radarData.length > 0 ? (
-              <AnimatedRadar data={radarData} />
-            ) : (
-              <div className="flex h-full items-center justify-center rounded-[24px] border border-dashed border-brand-border bg-brand-elevated text-sm text-brand-textTer">
-                No skills yet.
-              </div>
-            )}
-          </div>
-        </section>
-
+      <div className="grid gap-6">
         <section className="glass-panel card-float overflow-hidden rounded-[30px]">
           <div className="flex items-center justify-between border-b border-brand-border px-6 py-5">
             <div>
@@ -361,59 +332,6 @@ function ProfileMetric({ label, value, detail }: { label: string; value: string;
       <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-textTer">{label}</div>
       <div className="mt-2 text-3xl font-black text-brand-textPri">{value}</div>
       <div className="mt-2 text-sm text-brand-textSec">{detail}</div>
-    </div>
-  );
-}
-
-function AnimatedRadar({ data }: { data: Array<{ subject: string; level: number }> }) {
-  const size = 360;
-  const center = size / 2;
-  const radius = 120;
-
-  const points = data.map((item, index) => {
-    const angle = (Math.PI * 2 * index) / data.length - Math.PI / 2;
-    const x = center + Math.cos(angle) * radius * (item.level / 100);
-    const y = center + Math.sin(angle) * radius * (item.level / 100);
-    const labelX = center + Math.cos(angle) * (radius + 38);
-    const labelY = center + Math.sin(angle) * (radius + 38);
-    return { ...item, angle, x, y, labelX, labelY };
-  });
-
-  const polygonPoints = points.map((point) => `${point.x},${point.y}`).join(' ');
-
-  return (
-    <div className="flex h-full items-center justify-center">
-      <svg viewBox={`0 0 ${size} ${size}`} className="max-h-full w-full">
-        {[1, 0.75, 0.5, 0.25].map((scale) => (
-          <polygon
-            key={scale}
-            points={data
-              .map((_, index) => {
-                const angle = (Math.PI * 2 * index) / data.length - Math.PI / 2;
-                const x = center + Math.cos(angle) * radius * scale;
-                const y = center + Math.sin(angle) * radius * scale;
-                return `${x},${y}`;
-              })
-              .join(' ')}
-            fill="none"
-            stroke="rgba(255,255,255,0.08)"
-          />
-        ))}
-
-        {points.map((point) => (
-          <g key={point.subject}>
-            <line x1={center} y1={center} x2={point.labelX - 12 * Math.cos(point.angle)} y2={point.labelY - 12 * Math.sin(point.angle)} stroke="rgba(255,255,255,0.08)" />
-            <text x={point.labelX} y={point.labelY} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.62)" fontSize="12">
-              {point.subject}
-            </text>
-          </g>
-        ))}
-
-        <polygon points={polygonPoints} fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.9)" strokeWidth="3" className="radar-draw" />
-        {points.map((point) => (
-          <circle key={`${point.subject}-node`} cx={point.x} cy={point.y} r="5" fill="#000000" stroke="#FFFFFF" strokeWidth="3" />
-        ))}
-      </svg>
     </div>
   );
 }
