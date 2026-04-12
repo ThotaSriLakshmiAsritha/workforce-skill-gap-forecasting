@@ -7,6 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-flash-latest";
+
 const tryParseJson = (text: string) => {
   try {
     return JSON.parse(text);
@@ -35,7 +37,7 @@ const toBase64 = (bytes: Uint8Array) => {
   return btoa(binary);
 };
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -84,7 +86,7 @@ Deno.serve(async (req) => {
         : "application/octet-stream";
 
     const genAI = new GoogleGenerativeAI(Deno.env.get("GEMINI_API_KEY") || "");
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
     const prompt = `You are a senior technical recruiter. Extract structured data from the provided resume and score the candidate against the job requirement. Return ONLY valid JSON with no markdown fences:
 {

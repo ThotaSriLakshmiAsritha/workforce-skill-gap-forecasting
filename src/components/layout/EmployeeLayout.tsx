@@ -1,11 +1,13 @@
-import { Briefcase, GraduationCap, Target, UserCircle2 } from 'lucide-react';
-import { WorkspaceShell } from './WorkspaceShell';
+import { FileSearch, UserCircle2 } from "lucide-react";
+import { WorkspaceShell } from "./WorkspaceShell";
 
 const navItems = [
-  { to: '/employee/profile', label: 'My Profile', icon: UserCircle2 },
-  { to: '/employee/learning', label: 'Learning Path', icon: GraduationCap },
-  { to: '/employee/projects', label: 'My Projects', icon: Briefcase },
-  { to: '/employee/skill-goal', label: 'Skill Gap to Goal', icon: Target },
+  { to: "/employee/profile", label: "My Profile", icon: UserCircle2 },
+  {
+    to: "/employee/resume-screener",
+    label: "Resume Screener",
+    icon: FileSearch,
+  },
 ];
 
 export const EmployeeLayout = () => {

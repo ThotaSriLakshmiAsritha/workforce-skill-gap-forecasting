@@ -3,6 +3,52 @@ import { ShieldCheck, Plus, Pencil, Sparkles, UserCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 
+type EmployeeSkillRow = {
+  id: string;
+  proficiency: string;
+  self_rated: boolean;
+  skills?: {
+    name?: string;
+    category?: string;
+  } | null;
+};
+
+type AssignedProjectRow = {
+  id: string;
+  role_in_project?: string | null;
+  status?: string | null;
+  assigned_at?: string | null;
+  projects?: {
+    id?: string;
+    name?: string;
+    description?: string | null;
+    status?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+  } | null;
+};
+
+type EmployeeProjectRow = {
+  id: string;
+  name: string;
+  description?: string | null;
+  technologies?: string[] | null;
+  url?: string | null;
+  created_at?: string | null;
+};
+
+type ShowcaseProject = {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  source: 'Assigned' | 'Portfolio';
+  role?: string;
+  technologies: string[];
+  timeline: string;
+  url?: string;
+};
+
 export default function MyProfile() {
   const { user, profile } = useAuth();
 
@@ -14,7 +60,35 @@ export default function MyProfile() {
         .from('employee_skills')
         .select('id, proficiency, self_rated, skills(name, category)')
         .eq('employee_id', user.id);
-      return data || [];
+      return (data as EmployeeSkillRow[]) || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: assignedProjects, isLoading: assignedProjectsLoading } = useQuery({
+    queryKey: ['employee-assigned-projects', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data } = await supabase
+        .from('project_assignments')
+        .select('id, role_in_project, status, assigned_at, projects(id, name, description, status, start_date, end_date)')
+        .eq('employee_id', user.id)
+        .order('assigned_at', { ascending: false });
+      return (data as AssignedProjectRow[]) || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: portfolioProjects, isLoading: portfolioProjectsLoading } = useQuery({
+    queryKey: ['employee-portfolio-projects', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data } = await supabase
+        .from('employee_projects')
+        .select('id, name, description, technologies, url, created_at')
+        .eq('employee_id', user.id)
+        .order('created_at', { ascending: false });
+      return (data as EmployeeProjectRow[]) || [];
     },
     enabled: !!user?.id,
   });
@@ -35,14 +109,48 @@ export default function MyProfile() {
   };
 
   const radarData = skills && skills.length > 0
-    ? skills.slice(0, 6).map((skill: any) => ({
+    ? skills.slice(0, 6).map((skill) => ({
         subject: skill.skills?.name || 'Unknown',
         level: getLevelValue(skill.proficiency),
       }))
     : [];
 
-  const verifiedCount = (skills || []).filter((skill: any) => !skill.self_rated).length;
-  const selfRatedCount = (skills || []).filter((skill: any) => skill.self_rated).length;
+  const showcaseProjects: ShowcaseProject[] = [
+    ...((assignedProjects || []).map((assignment) => {
+      const start = assignment.projects?.start_date;
+      const end = assignment.projects?.end_date;
+      const timeline = start && end
+        ? `${start} -> ${end}`
+        : start
+          ? `Started ${start}`
+          : 'Timeline TBD';
+
+      return {
+        id: `assigned-${assignment.id}`,
+        name: assignment.projects?.name || 'Assigned Project',
+        description: assignment.projects?.description || 'No project description provided.',
+        status: assignment.projects?.status || assignment.status || 'active',
+        source: 'Assigned' as const,
+        role: assignment.role_in_project || 'Contributor',
+        technologies: [],
+        timeline,
+      };
+    })),
+    ...((portfolioProjects || []).map((project) => ({
+      id: `portfolio-${project.id}`,
+      name: project.name,
+      description: project.description || 'No project description provided.',
+      status: 'portfolio',
+      source: 'Portfolio' as const,
+      role: 'Owner',
+      technologies: project.technologies || [],
+      timeline: project.created_at ? `Added ${project.created_at.slice(0, 10)}` : 'Timeline TBD',
+      url: project.url || undefined,
+    }))),
+  ];
+
+  const verifiedCount = (skills || []).filter((skill) => !skill.self_rated).length;
+  const selfRatedCount = (skills || []).filter((skill) => skill.self_rated).length;
   const avgProficiency = radarData.length
     ? Math.round(radarData.reduce((sum, item) => sum + item.level, 0) / radarData.length)
     : 0;
@@ -117,7 +225,7 @@ export default function MyProfile() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="max-h-[520px] overflow-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-brand-elevated text-brand-textSec">
                 <tr>
@@ -128,7 +236,7 @@ export default function MyProfile() {
                 </tr>
               </thead>
               <tbody>
-                {(skills || []).map((skill: any) => (
+                {(skills || []).map((skill) => (
                   <tr key={skill.id} className="border-t border-brand-border transition hover:bg-brand-elevated">
                     <td className="px-6 py-4 font-semibold text-brand-textPri">{skill.skills?.name}</td>
                     <td className="px-6 py-4 text-brand-textSec">{skill.skills?.category}</td>
@@ -175,6 +283,74 @@ export default function MyProfile() {
           </div>
         </section>
       </div>
+
+      <section className="glass-panel card-float overflow-hidden rounded-[30px]">
+        <div className="flex items-center justify-between border-b border-brand-border px-6 py-5">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-textTer">Project Showcase</div>
+            <h3 className="mt-2 text-2xl font-bold">All Skills & Projects in Action</h3>
+          </div>
+          <div className="rounded-full border border-brand-border bg-brand-elevated px-3 py-1 text-xs font-semibold text-brand-textSec">
+            Total Projects: {showcaseProjects.length}
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-6 md:grid-cols-2 xl:grid-cols-3">
+          {showcaseProjects.map((project) => (
+            <article key={project.id} className="rounded-[24px] border border-brand-border bg-brand-elevated p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <span className="rounded-full border border-brand-textPri/25 bg-brand-textPri/10 px-2.5 py-1 text-xs font-semibold text-brand-textPri">
+                  {project.source}
+                </span>
+                <span className="rounded-full border border-brand-border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-brand-textSec">
+                  {project.status}
+                </span>
+              </div>
+
+              <h4 className="text-lg font-bold text-brand-textPri">{project.name}</h4>
+              <p className="mt-2 line-clamp-3 text-sm text-brand-textSec">{project.description}</p>
+
+              <div className="mt-4 space-y-2 text-xs text-brand-textTer">
+                <div>Role: {project.role}</div>
+                <div>{project.timeline}</div>
+              </div>
+
+              {project.technologies.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {project.technologies.slice(0, 5).map((tech) => (
+                    <span key={`${project.id}-${tech}`} className="rounded-full border border-brand-border px-2.5 py-1 text-xs text-brand-textSec">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {project.url && (
+                <a
+                  href={project.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex text-sm font-semibold text-brand-textPri hover:underline"
+                >
+                  Open project link
+                </a>
+              )}
+            </article>
+          ))}
+
+          {(assignedProjectsLoading || portfolioProjectsLoading) && (
+            <div className="col-span-full rounded-[24px] border border-dashed border-brand-border bg-brand-elevated p-8 text-center text-sm text-brand-textTer">
+              Loading project showcase...
+            </div>
+          )}
+
+          {!assignedProjectsLoading && !portfolioProjectsLoading && showcaseProjects.length === 0 && (
+            <div className="col-span-full rounded-[24px] border border-dashed border-brand-border bg-brand-elevated p-8 text-center text-sm text-brand-textTer">
+              No projects available yet. Upload a resume or get assigned to a project to populate this showcase.
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

@@ -24,6 +24,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-flash-latest";
+
 const WEIGHTS = {
   skill_fit: 0.55,
   availability_fit: 0.25,
@@ -179,7 +181,7 @@ const buildLearningPaths = (
   return out;
 };
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -205,7 +207,7 @@ Deno.serve(async (req) => {
     const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
     const hasGemini = geminiApiKey.trim().length > 0;
     const model = hasGemini
-      ? new GoogleGenerativeAI(geminiApiKey).getGenerativeModel({ model: "gemini-1.5-pro-latest" })
+      ? new GoogleGenerativeAI(geminiApiKey).getGenerativeModel({ model: GEMINI_MODEL })
       : null;
 
     let requirements = fallbackRequirements;

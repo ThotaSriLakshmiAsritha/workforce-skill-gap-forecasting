@@ -45,7 +45,7 @@ function normalizeSkillName(s: string) {
   return s.trim().replace(/\s+/g, " ");
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return jsonResponse(200, { ok: true });
   if (req.method !== "POST") return jsonResponse(405, { error: "Use POST" });
 

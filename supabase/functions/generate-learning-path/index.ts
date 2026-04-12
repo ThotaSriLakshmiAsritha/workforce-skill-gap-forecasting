@@ -7,6 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-flash-latest";
+
 const tryParseJson = (text: string) => {
   try {
     return JSON.parse(text);
@@ -20,7 +22,7 @@ const tryParseJson = (text: string) => {
   }
 };
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -67,7 +69,7 @@ Deno.serve(async (req) => {
     ])).filter(Boolean);
 
     const genAI = new GoogleGenerativeAI(Deno.env.get("GEMINI_API_KEY") || "");
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
     const prompt = `You are a career upskilling AI.\n\nEmployee current skills: ${JSON.stringify(employeeSkills || [])}\nTarget role: ${target_role || ""}\nGap skills: ${JSON.stringify(skillsToLearn)}\nTimeline weeks: ${timeline_weeks}\n\nReturn ONLY JSON array:\n[\n  { "skill": "string", "course_name": "string", "platform": "string", "estimated_hours": 0, "url": "string", "priority": "high|medium|low", "deadline": "YYYY-MM-DD" }\n]`;
 
