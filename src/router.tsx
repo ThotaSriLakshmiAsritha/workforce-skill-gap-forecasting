@@ -12,8 +12,10 @@ import ProjectAllocator from "./pages/org/ProjectAllocator";
 import ResumeScreener from "./pages/org/ResumeScreener";
 import MyProfile from "./pages/employee/MyProfile";
 import EmployeeResumeScreener from "./pages/employee/EmployeeResumeScreener";
+import SkillGapPage from "./pages/employee/SkillGapPage";
+import LearningPlanPage from "./pages/employee/LearningPlanPage";
 
-export const router = createBrowserRouter([
+export const router = createBrowserRouter([ 
   {
     path: "/",
     element: <Landing />,
@@ -77,6 +79,8 @@ export const router = createBrowserRouter([
               },
               { path: "profile", element: <MyProfile /> },
               { path: "resume-screener", element: <EmployeeResumeScreener /> },
+              { path: "skill-gap", element: <SkillGapPage /> },
+              { path: "learning-plan", element: <LearningPlanPage /> },
             ],
           },
         ],
