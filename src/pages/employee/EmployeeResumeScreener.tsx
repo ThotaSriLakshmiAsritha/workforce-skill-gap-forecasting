@@ -247,10 +247,6 @@ export default function EmployeeResumeScreener() {
       }, {})
     : {};
 
-  const extractedSkills = latestParse?.extracted_skills?.map(skill => skill.name) || [];
-
-  const allRoleAnalyses = extractedSkills.length > 0 ? ROLES.map(role => analyzeSkillGap(extractedSkills, role)) : [];
-
   return (
     <div className="space-y-6">
       {/* Header */}
