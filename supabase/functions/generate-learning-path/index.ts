@@ -4,118 +4,12 @@ import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-flash-latest";
-
-type GapSkill = { skill: string; priority: "required" | "nice-to-have" };
-
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-const buildFallbackPlan = (roleTitle: string, roleId: string, gapSkills: GapSkill[]) => {
-  const required = gapSkills.filter((s) => s.priority === "required");
-  const bonus = gapSkills.filter((s) => s.priority === "nice-to-have");
-
-  const selectedRequired = required.slice(0, 8);
-  const selectedBonus = bonus.slice(0, 4);
-
-  let weekCursor = 1;
-  const mkSkill = (skill: string, isRequired: boolean, difficulty: "Beginner" | "Intermediate" | "Advanced") => {
-    const estimatedHours = difficulty === "Beginner" ? 18 : difficulty === "Intermediate" ? 32 : 48;
-    const durationWeeks = Math.max(1, Math.ceil(estimatedHours / 12));
-    const weekStart = weekCursor;
-    const weekEnd = weekCursor + durationWeeks - 1;
-    weekCursor = weekEnd + 1;
-
-    return {
-      skill,
-      isRequired,
-      isPrerequisite: false,
-      estimatedHours,
-      weekStart,
-      weekEnd,
-      difficulty,
-      resources: [
-        {
-          title: `${skill} roadmap`,
-          type: "Documentation",
-          provider: "roadmap.sh",
-          url: `https://roadmap.sh/${slugify(skill)}`,
-          free: true,
-          durationHours: null,
-        },
-        {
-          title: `${skill} curated videos`,
-          type: "Course",
-          provider: "YouTube",
-          url: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${skill} tutorial`)}`,
-          free: true,
-          durationHours: null,
-        },
-      ],
-      milestones: [
-        `Build one portfolio artifact that demonstrates ${skill}`,
-        `Explain ${skill} trade-offs in a short technical write-up`,
-      ],
-      projectIdea: `Create a small project for ${skill} aligned to ${roleTitle} responsibilities.`,
-    };
-  };
-
-  const foundationSkills = selectedRequired.slice(0, Math.max(1, Math.ceil(selectedRequired.length / 3)));
-  const coreSkills = selectedRequired.slice(foundationSkills.length);
-  const specializationSkills = selectedBonus;
-
-  const phases = [
-    {
-      name: "Foundation",
-      skills: foundationSkills.map((s) => mkSkill(s.skill, true, "Beginner" as const)),
-    },
-    {
-      name: "Core",
-      skills: coreSkills.map((s) => mkSkill(s.skill, true, "Intermediate" as const)),
-    },
-    {
-      name: "Specialization",
-      skills: specializationSkills.map((s) => mkSkill(s.skill, false, "Advanced" as const)),
-    },
-  ]
-    .filter((phase) => phase.skills.length > 0)
-    .map((phase) => ({
-      ...phase,
-      weekStart: phase.skills[0].weekStart,
-      weekEnd: phase.skills[phase.skills.length - 1].weekEnd,
-    }));
-
-  if (phases.length === 0) {
-    const starter = mkSkill("Role-specific interview readiness", false, "Beginner");
-    phases.push({
-      name: "Foundation",
-      weekStart: starter.weekStart,
-      weekEnd: starter.weekEnd,
-      skills: [starter],
-    });
-  }
-
-  const totalEstimatedHours = phases.reduce(
-    (phaseTotal, phase) => phaseTotal + phase.skills.reduce((skillTotal, skill) => skillTotal + skill.estimatedHours, 0),
-    0,
-  );
-
-  return {
-    targetRole: roleTitle,
-    targetRoleId: roleId,
-    totalEstimatedWeeks: phases[phases.length - 1].weekEnd,
-    totalEstimatedHours,
-    prioritySkillsCount: required.length,
-    bonusSkillsCount: bonus.length,
-    phases,
-  };
-};
+const GEMINI_MODEL =
+  Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-flash-latest";
 
 const tryParseJson = (text: string) => {
   try {
@@ -125,7 +19,11 @@ const tryParseJson = (text: string) => {
     const objFirst = text.indexOf("{");
     const objLast = text.lastIndexOf("}");
     if (objFirst !== -1 && objLast !== -1 && objLast > objFirst) {
-      try { return JSON.parse(text.slice(objFirst, objLast + 1)); } catch { /* fall through */ }
+      try {
+        return JSON.parse(text.slice(objFirst, objLast + 1));
+      } catch {
+        /* fall through */
+      }
     }
     const arrFirst = text.indexOf("[");
     const arrLast = text.lastIndexOf("]");
@@ -147,7 +45,7 @@ Deno.serve(async (req: Request) => {
       employee_id,
       role_id,
       role_title,
-      missing_required = [],    // string[] from the cached skill gap analysis
+      missing_required = [], // string[] from the cached skill gap analysis
       missing_nice_to_have = [], // string[]
       force_refresh = false,
     } = body || {};
@@ -178,7 +76,10 @@ Deno.serve(async (req: Request) => {
             _generated_at: cached.created_at,
             _model: cached.model_used,
           }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          },
         );
       }
     }
@@ -197,12 +98,21 @@ Deno.serve(async (req: Request) => {
       }))
       .filter((s: any) => s.name);
 
-    // ── 3. Build plan (AI first; deterministic fallback on API/model errors) ─
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
+    // ── 3. Build plan via Gemini ─────────────────────────────────────────────
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!geminiApiKey) {
+      throw new Error("GEMINI_API_KEY is not configured");
+    }
 
     const allGapSkills = [
-      ...missing_required.map((s: string) => ({ skill: s, priority: "required" })),
-      ...missing_nice_to_have.map((s: string) => ({ skill: s, priority: "nice-to-have" })),
+      ...missing_required.map((s: string) => ({
+        skill: s,
+        priority: "required",
+      })),
+      ...missing_nice_to_have.map((s: string) => ({
+        skill: s,
+        priority: "nice-to-have",
+      })),
     ];
 
     const prompt = `You are an expert career learning path AI. Generate a structured, personalised learning roadmap for an employee targeting the "${role_title}" role.
@@ -266,51 +176,53 @@ Rules:
 - Keep milestones concrete and action-oriented (e.g. "Build a CRUD REST API with 5 endpoints").
 - Return ONLY the JSON object — no explanation, no markdown.`;
 
-    let plan: any = null;
-    let modelUsed = GEMINI_MODEL;
-
-    if (!geminiApiKey) {
-      console.warn("generate-learning-path: GEMINI_API_KEY missing, using fallback plan");
-    } else {
-      try {
-        const model = new GoogleGenerativeAI(geminiApiKey).getGenerativeModel({ model: GEMINI_MODEL });
-        const result = await model.generateContent(prompt);
-        const rawText = result.response.text() || "";
-        const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-        plan = tryParseJson(cleanText);
-      } catch (geminiError: any) {
-        console.error("generate-learning-path: AI generation failed, using fallback", geminiError?.message || geminiError);
-      }
-    }
+    const model = new GoogleGenerativeAI(geminiApiKey).getGenerativeModel({
+      model: GEMINI_MODEL,
+    });
+    const result = await model.generateContent(prompt);
+    const rawText = result.response.text() || "";
+    const cleanText = rawText
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+    const plan = tryParseJson(cleanText);
 
     if (!plan || typeof plan !== "object" || Array.isArray(plan)) {
-      plan = buildFallbackPlan(role_title, role_id, allGapSkills);
-      modelUsed = "rules-fallback";
+      throw new Error("Gemini returned an unexpected response shape");
     }
 
     // ── 4. Persist to DB (upsert — one row per employee + role) ─────────────
-    await supabase
-      .from("learning_path_plans")
-      .upsert(
-        {
-          employee_id,
-          role_id,
-          role_title,
-          result: plan,
-          model_used: modelUsed,
-          created_at: new Date().toISOString(),
-        },
-        { onConflict: "employee_id,role_id" },
-      );
+    await supabase.from("learning_path_plans").upsert(
+      {
+        employee_id,
+        role_id,
+        role_title,
+        result: plan,
+        model_used: GEMINI_MODEL,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "employee_id,role_id" },
+    );
 
     return new Response(
-      JSON.stringify({ ...plan, _cached: false, _generated_at: new Date().toISOString(), _model: modelUsed }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
+      JSON.stringify({
+        ...plan,
+        _cached: false,
+        _generated_at: new Date().toISOString(),
+        _model: GEMINI_MODEL,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      },
     );
   } catch (error: any) {
     return new Response(
       JSON.stringify({ error: error.message || "Unknown error" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      },
     );
   }
 });
