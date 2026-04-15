@@ -1,15 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js";
+import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-// Strip the "groq/" prefix if present (env may have "groq/llama-3.3-70b-versatile" format)
-const rawGroqModel = Deno.env.get("GROQ_MODEL")?.trim() || "llama-3.3-70b-versatile";
-const GROQ_MODEL = rawGroqModel.startsWith("groq/") ? rawGroqModel.slice(5) : rawGroqModel;
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-flash-latest";
 
 const tryParseJson = (text: string) => {
   try {
@@ -88,9 +86,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // ── 3. Call Groq AI ──────────────────────────────────────────────────────
-    const groqApiKey = Deno.env.get("GROQ_API_KEY") || "";
-    if (!groqApiKey) throw new Error("GROQ_API_KEY is not configured");
+    // ── 3. Call Gemini AI ────────────────────────────────────────────────────
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
+    if (!geminiApiKey) throw new Error("GEMINI_API_KEY is not configured");
 
     const prompt = `You are a senior talent analytics AI. Perform an in-depth, expert-level skill gap analysis for an employee targeting the role of "${role_title}".
 
@@ -130,30 +128,9 @@ Rules:
 - top_learning_priorities: list 3-5 most impactful gaps to close, ordered by urgency.
 - Keep ai_insights concise, specific to this employee, encouraging but honest.`;
 
-    const groqRes = await fetch(GROQ_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${groqApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: "system", content: "You are a precision skill gap analyst. Return only valid JSON." },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 2048,
-      }),
-    });
-
-    if (!groqRes.ok) {
-      const errText = await groqRes.text();
-      throw new Error(`Groq API error: ${groqRes.status} ${errText}`);
-    }
-
-    const groqData = await groqRes.json();
-    const rawText = groqData.choices?.[0]?.message?.content || "";
+    const model = new GoogleGenerativeAI(geminiApiKey).getGenerativeModel({ model: GEMINI_MODEL });
+    const result = await model.generateContent(prompt);
+    const rawText = result.response.text() || "";
     const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
 
     const analysis = tryParseJson(cleanText);
@@ -169,14 +146,14 @@ Rules:
           result: analysis,
           readiness_score: analysis.readiness_score ?? null,
           readiness_label: analysis.readiness_label ?? null,
-          model_used: GROQ_MODEL,
+          model_used: GEMINI_MODEL,
           created_at: new Date().toISOString(),
         },
         { onConflict: "employee_id,role_id" },
       );
 
     return new Response(
-      JSON.stringify({ ...analysis, _cached: false, _analysed_at: new Date().toISOString(), _model: GROQ_MODEL }),
+      JSON.stringify({ ...analysis, _cached: false, _analysed_at: new Date().toISOString(), _model: GEMINI_MODEL }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
     );
   } catch (error: any) {
