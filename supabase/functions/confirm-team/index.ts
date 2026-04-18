@@ -45,6 +45,10 @@ function normalizeSkillName(s: string) {
   return s.trim().replace(/\s+/g, " ");
 }
 
+function formatDateOnly(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return jsonResponse(200, { ok: true });
   if (req.method !== "POST") return jsonResponse(405, { error: "Use POST" });
@@ -93,14 +97,23 @@ Deno.serve(async (req: Request) => {
 
   // 1) Create or reuse project
   let projectId = payload.project_id ?? null;
+  const timelineWeeks = Math.max(1, payload.timeline_weeks ?? 1);
+  const startDate = new Date();
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + timelineWeeks * 7);
+  const projectUpdatePayload = {
+    name: payload.project_name.trim(),
+    description: payload.description ?? null,
+    status: "active",
+    team_size: payload.team_size ?? payload.matched_employees.length,
+    start_date: formatDateOnly(startDate),
+    end_date: formatDateOnly(endDate),
+  };
+
   if (projectId) {
     const { error: updateErr } = await supabase
       .from("projects")
-      .update({
-        name: payload.project_name.trim(),
-        description: payload.description ?? null,
-        team_size: payload.team_size ?? payload.matched_employees.length,
-      })
+      .update(projectUpdatePayload)
       .eq("id", projectId);
     if (updateErr) {
       return jsonResponse(500, { error: "Failed to update project", details: updateErr });
@@ -109,10 +122,7 @@ Deno.serve(async (req: Request) => {
     const { data: project, error: projectErr } = await supabase
       .from("projects")
       .insert({
-        name: payload.project_name.trim(),
-        description: payload.description ?? null,
-        status: "planning",
-        team_size: payload.team_size ?? payload.matched_employees.length,
+        ...projectUpdatePayload,
         created_by: userId,
       })
       .select("id")

@@ -1,0 +1,5 @@
+[functions.allocate-project]
+verify_jwt = false
+
+[functions.parse-employee-resume]
+verify_jwt = false

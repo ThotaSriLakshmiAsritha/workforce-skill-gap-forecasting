@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { BookOpen, Target, Clock, CheckCircle2, ChevronDown, ChevronUp, Copy, ExternalLink } from 'lucide-react';
 
 // Types

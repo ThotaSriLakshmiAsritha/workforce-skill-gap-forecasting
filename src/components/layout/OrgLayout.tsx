@@ -1,8 +1,9 @@
-import { BarChart3, BriefcaseBusiness, FileSearch } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, FolderKanban, FileSearch } from 'lucide-react';
 import { WorkspaceShell } from './WorkspaceShell';
 
 const navItems = [
   { to: '/org/dashboard', label: 'Dashboard', icon: BarChart3 },
+  { to: '/org/projects', label: 'Projects', icon: FolderKanban },
   { to: '/org/allocator', label: 'Project Allocator', icon: BriefcaseBusiness },
   { to: '/org/screener', label: 'Resume Screener', icon: FileSearch },
 ];

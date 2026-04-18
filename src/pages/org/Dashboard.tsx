@@ -9,26 +9,43 @@ export default function Dashboard() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['org-stats'],
     queryFn: async () => {
-      const { count: totalEmployees, error: err1 } = await supabase
+      const { data: employeeProfiles, error: err1 } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact', head: true })
+        .select('id, department, full_name, job_title')
         .eq('role', 'employee');
       if (err1) throw err1;
 
-      const { count: availableCount } = await supabase
-        .from('employee_availability')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'available');
+      const employees = employeeProfiles || [];
+      const totalEmployees = employees.length;
+      const employeeIds = employees.map((employee) => employee.id);
 
-      const { count: inProjectCount } = await supabase
+      const { data: availabilityRows, error: availabilityError } = await supabase
         .from('employee_availability')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'in_project');
+        .select('employee_id, status')
+        .in('employee_id', employeeIds.length > 0 ? employeeIds : ['00000000-0000-0000-0000-000000000000']);
+      if (availabilityError) throw availabilityError;
 
-      const { count: onLeaveCount } = await supabase
-        .from('employee_availability')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'on_leave');
+      const availabilityByEmployee = new Map(
+        (availabilityRows || []).map((row) => [row.employee_id, row.status])
+      );
+
+      let availableCount = 0;
+      let inProjectCount = 0;
+      let onLeaveCount = 0;
+      let unavailableCount = 0;
+
+      for (const employee of employees) {
+        const status = availabilityByEmployee.get(employee.id) || 'available';
+        if (status === 'in_project') {
+          inProjectCount += 1;
+        } else if (status === 'on_leave') {
+          onLeaveCount += 1;
+        } else if (status === 'unavailable') {
+          unavailableCount += 1;
+        } else {
+          availableCount += 1;
+        }
+      }
 
       const { count: totalLearning } = await supabase
         .from('learning_paths')
@@ -43,19 +60,12 @@ export default function Dashboard() {
         ? Math.round(((completedLearning || 0) / totalLearning) * 100)
         : 0;
 
-      const { data: depts } = await supabase.from('profiles').select('department').eq('role', 'employee');
-      const deptCounts = depts?.reduce((acc: any, curr) => {
+      const deptCounts = employees.reduce((acc: any, curr) => {
         if (!curr.department) return acc;
         acc[curr.department] = (acc[curr.department] || 0) + 1;
         return acc;
       }, {}) || {};
       const deptData = Object.keys(deptCounts).map((key) => ({ name: key, value: deptCounts[key] })).filter((item) => item.name);
-
-      const { data: employees } = await supabase
-        .from('profiles')
-        .select('id, full_name, department, job_title')
-        .eq('role', 'employee')
-        .limit(20);
 
       const { data: latestSnapshot } = await supabase
         .from('skill_gap_snapshots')
@@ -83,10 +93,11 @@ export default function Dashboard() {
         availableCount: availableCount || 0,
         inProjectCount: inProjectCount || 0,
         onLeaveCount: onLeaveCount || 0,
+        unavailableCount: unavailableCount || 0,
         skillGapIndex: gapIndex,
         trainingCompletion,
         deptData: deptData.length > 0 ? deptData : [],
-        employees: employees || [],
+        employees: employees.slice(0, 20),
         skillGapTiles,
       };
     },
@@ -109,6 +120,7 @@ export default function Dashboard() {
     { name: 'Available', value: stats?.availableCount || 0 },
     { name: 'In Project', value: stats?.inProjectCount || 0 },
     { name: 'On Leave', value: stats?.onLeaveCount || 0 },
+    { name: 'Unavailable', value: stats?.unavailableCount || 0 },
   ];
 
   return (
@@ -140,7 +152,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="card-float rounded-[30px] border border-brand-border bg-brand-surface p-6">
+        <section className="card-float min-w-0 rounded-[30px] border border-brand-border bg-brand-surface p-6">
           <div className="mb-5 flex items-center justify-between">
             <div>
               <div className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-textTer">Department Spread</div>
@@ -150,7 +162,7 @@ export default function Dashboard() {
           </div>
           <div className="h-[320px]">
             {stats?.deptData && stats.deptData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={320}>
                 <PieChart>
                   <Pie data={stats.deptData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={4} dataKey="value">
                     {stats.deptData.map((_entry: any, index: number) => (
@@ -174,13 +186,13 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <section className="card-float rounded-[30px] border border-brand-border bg-brand-surface p-6">
+        <section className="card-float min-w-0 rounded-[30px] border border-brand-border bg-brand-surface p-6">
           <div className="mb-5">
             <div className="font-mono text-xs font-semibold uppercase tracking-[0.24em] text-brand-textTer">Availability Mix</div>
             <h3 className="mt-2 text-2xl font-bold">Bench readiness</h3>
           </div>
           <div className="h-[320px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={320}>
               <BarChart data={availabilityData}>
                 <XAxis dataKey="name" stroke="#1F1F1F" tickLine={false} axisLine={false} tick={{ fill: '#5C5C5C', fontFamily: 'DM Mono' }} />
                 <YAxis stroke="#1F1F1F" tickLine={false} axisLine={false} tick={{ fill: '#5C5C5C', fontFamily: 'DM Mono' }} />

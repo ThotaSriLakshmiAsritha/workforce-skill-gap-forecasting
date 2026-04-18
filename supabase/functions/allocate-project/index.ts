@@ -9,6 +9,7 @@ type Candidate = {
   job_title?: string;
   years_of_experience?: number;
   skills: EmployeeSkill[];
+  availability_status?: string;
 };
 
 type ParsedRequirements = {
@@ -50,6 +51,21 @@ const proficiencyScore = (value: string | null | undefined): number => {
 
 const clamp = (v: number, min = 0, max = 1) => Math.max(min, Math.min(max, v));
 
+const availabilityScore = (status: string | null | undefined): number => {
+  switch ((status || "").toLowerCase()) {
+    case "available":
+      return 1;
+    case "in_project":
+      return 0.45;
+    case "on_leave":
+      return 0.1;
+    case "unavailable":
+      return 0;
+    default:
+      return 0.75;
+  }
+};
+
 const toJsonString = (value: unknown) => {
   try {
     return JSON.stringify(value ?? {}, null, 2);
@@ -71,12 +87,80 @@ const tryParseJson = (text: string) => {
   }
 };
 
-const normalizeSkill = (s: string) => s.trim().toLowerCase();
+const normalizeSkill = (s: string) => {
+  const normalized = s
+    .trim()
+    .toLowerCase()
+    .replace(/[.+#/\\()_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const aliases: Record<string, string> = {
+    "react js": "react",
+    "reactjs": "react",
+    "node js": "node",
+    "nodejs": "node",
+    "node": "node.js",
+    "js": "javascript",
+    "javascript es6": "javascript",
+    "typescript js": "typescript",
+    "ts": "typescript",
+    "postgres": "postgresql",
+    "postgre sql": "postgresql",
+    "aws cloud": "aws",
+    "amazon web services": "aws",
+    "powerbi": "power bi",
+    "structured query language": "sql",
+  };
+
+  return aliases[normalized] || normalized;
+};
+
+const dedupeSkills = (skills: EmployeeSkill[]) => {
+  const byName = new Map<string, EmployeeSkill>();
+
+  for (const skill of skills) {
+    const key = normalizeSkill(skill.name || "");
+    if (!key) continue;
+
+    const existing = byName.get(key);
+    if (!existing || proficiencyScore(skill.proficiency) > proficiencyScore(existing.proficiency)) {
+      byName.set(key, {
+        name: skill.name.trim(),
+        proficiency: skill.proficiency,
+      });
+    }
+  }
+
+  return Array.from(byName.values());
+};
 
 const parseSkillsInput = (input: unknown): string[] => {
   if (Array.isArray(input)) return input.map((x) => String(x).trim()).filter(Boolean);
   if (typeof input === "string") return input.split(",").map((s) => s.trim()).filter(Boolean);
   return [];
+};
+
+const mergeRequirements = (
+  fallback: ParsedRequirements,
+  extracted: ParsedRequirements,
+) => {
+  const fallbackSkills = parseSkillsInput(fallback.required_skills);
+  const extractedSkills = parseSkillsInput(extracted.required_skills);
+
+  return {
+    project_name: fallback.project_name?.trim() || extracted.project_name,
+    description: fallback.description?.trim() || extracted.description,
+    // Trust explicit dashboard-provided skills over AI inference when present.
+    required_skills: fallbackSkills.length > 0 ? fallbackSkills : extractedSkills,
+    // Trust explicit numeric inputs from the dashboard over AI parsing.
+    team_size: Number.isFinite(fallback.team_size) && fallback.team_size > 0
+      ? fallback.team_size
+      : extracted.team_size,
+    timeline_weeks: Number.isFinite(fallback.timeline_weeks) && fallback.timeline_weeks > 0
+      ? fallback.timeline_weeks
+      : extracted.timeline_weeks,
+  };
 };
 
 const extractRequirementsWithGemini = async (
@@ -143,7 +227,7 @@ const scoreCandidate = (
     ? profScores.reduce((a, b) => a + b, 0) / normalizedRequired.length
     : 0;
   const experienceFit = clamp((candidate.years_of_experience || 0) / 10);
-  const availabilityFit = 1; // strict filter: only available candidates are considered
+  const availabilityFit = availabilityScore(candidate.availability_status);
 
   const weighted =
     WEIGHTS.skill_fit * skillFit +
@@ -213,7 +297,8 @@ Deno.serve(async (req: Request) => {
     let requirements = fallbackRequirements;
     if (chatMessage.length > 0 && model) {
       try {
-        requirements = await extractRequirementsWithGemini(model, fallbackRequirements, chatMessage);
+        const extractedRequirements = await extractRequirementsWithGemini(model, fallbackRequirements, chatMessage);
+        requirements = mergeRequirements(fallbackRequirements, extractedRequirements);
       } catch {
         requirements = fallbackRequirements;
       }
@@ -243,7 +328,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Strict availability rule (Option A): only status='available'.
     const { data: profiles, error: profilesError } = await supabaseClient
       .from("profiles")
       .select("id, full_name, job_title, years_of_experience")
@@ -253,10 +337,14 @@ Deno.serve(async (req: Request) => {
     const { data: availability, error: availabilityError } = await supabaseClient
       .from("employee_availability")
       .select("employee_id, status")
-      .eq("status", "available");
     if (availabilityError) throw availabilityError;
 
-    const availableIds = new Set((availability || []).map((a: any) => a.employee_id));
+    const availabilityByEmployee = new Map<string, string>();
+    for (const row of availability || []) {
+      if ((row as any).employee_id) {
+        availabilityByEmployee.set((row as any).employee_id, String((row as any).status || ""));
+      }
+    }
 
     const { data: employeeSkills, error: skillsError } = await supabaseClient
       .from("employee_skills")
@@ -275,14 +363,45 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const { data: resumeParses, error: resumeParsesError } = await supabaseClient
+      .from("employee_resume_parses")
+      .select("employee_id, extracted_skills, created_at")
+      .eq("status", "completed")
+      .order("created_at", { ascending: false });
+    if (resumeParsesError) throw resumeParsesError;
+
+    const resumeSkillsByEmployee = new Map<string, EmployeeSkill[]>();
+    for (const row of resumeParses || []) {
+      const employeeId = (row as any).employee_id as string | undefined;
+      if (!employeeId || resumeSkillsByEmployee.has(employeeId)) continue;
+
+      const extractedSkills = Array.isArray((row as any).extracted_skills)
+        ? (row as any).extracted_skills
+        : [];
+
+      const normalizedSkills = extractedSkills
+        .map((skill: any) => ({
+          name: String(skill?.name || "").trim(),
+          proficiency: String(skill?.proficiency || "intermediate"),
+        }))
+        .filter((skill: EmployeeSkill) => Boolean(skill.name));
+
+      if (normalizedSkills.length > 0) {
+        resumeSkillsByEmployee.set(employeeId, dedupeSkills(normalizedSkills));
+      }
+    }
+
     const candidates: Candidate[] = (profiles || [])
-      .filter((p: any) => availableIds.has(p.id))
       .map((p: any) => ({
         id: p.id,
         name: p.full_name,
         job_title: p.job_title,
         years_of_experience: p.years_of_experience,
-        skills: skillsByEmployee.get(p.id) || [],
+        availability_status: availabilityByEmployee.get(p.id) || "available",
+        skills: dedupeSkills([
+          ...(skillsByEmployee.get(p.id) || []),
+          ...(resumeSkillsByEmployee.get(p.id) || []),
+        ]),
       }));
 
     const scored = candidates.map((candidate) => {
@@ -296,7 +415,8 @@ Deno.serve(async (req: Request) => {
         gap_skills: s.gapSkills,
         _components: s.components,
       };
-    }).sort((a, b) => b.match_score - a.match_score);
+    }).filter((candidate) => candidate.matched_skills.length > 0)
+      .sort((a, b) => b.match_score - a.match_score);
 
     const teamSize = Math.max(1, requirements.team_size || 1);
     const matchedEmployees = scored.slice(0, teamSize).map(({ _components, ...rest }) => rest);

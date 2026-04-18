@@ -8,6 +8,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/auth/Login";
 import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/org/Dashboard";
+import Projects from "./pages/org/Projects";
 import ProjectAllocator from "./pages/org/ProjectAllocator";
 import ResumeScreener from "./pages/org/ResumeScreener";
 import MyProfile from "./pages/employee/MyProfile";
@@ -55,6 +56,7 @@ export const router = createBrowserRouter([
                 element: <Navigate to="/org/dashboard" replace />,
               },
               { path: "dashboard", element: <Dashboard /> },
+              { path: "projects", element: <Projects /> },
               { path: "allocator", element: <ProjectAllocator /> },
               { path: "screener", element: <ResumeScreener /> },
             ],

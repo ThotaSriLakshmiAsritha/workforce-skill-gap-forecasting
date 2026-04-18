@@ -113,7 +113,7 @@ export default function ProjectAllocator() {
   );
 
   const qualifiedInternalMatches = matches
-    .filter((match) => match.match_score >= 50)
+    .filter((match) => match.matched_skills.length > 0)
     .slice(0, teamSize);
 
   const remainingSeats = Math.max(teamSize - qualifiedInternalMatches.length, 0);
@@ -179,6 +179,36 @@ export default function ProjectAllocator() {
     setExternalCandidates(ranked);
   };
 
+  const getFunctionAuthHeaders = async () => {
+    let { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+      throw error;
+    }
+
+    const expiresAt = data.session?.expires_at ?? 0;
+    const expiresSoon = expiresAt > 0 && expiresAt * 1000 <= Date.now() + 60_000;
+
+    if (!data.session?.access_token || expiresSoon) {
+      const refreshed = await supabase.auth.refreshSession();
+
+      if (refreshed.error) {
+        throw refreshed.error;
+      }
+
+      data = refreshed.data;
+    }
+
+    const accessToken = data.session?.access_token;
+    if (!accessToken) {
+      throw new Error('Your session has expired. Please sign in again.');
+    }
+
+    return {
+      Authorization: `Bearer ${accessToken}`,
+    };
+  };
+
   const runAllocation = async (userMsg: string) => {
     if (!userMsg.trim() || loading || intakeLoading) return;
 
@@ -231,7 +261,10 @@ export default function ProjectAllocator() {
         }
       }
 
+      const authHeaders = await getFunctionAuthHeaders();
+
       const { data, error } = await supabase.functions.invoke('allocate-project', {
+        headers: authHeaders,
         body: {
           message: userMsg,
           project_name: projectName || 'New Project',
@@ -258,7 +291,9 @@ export default function ProjectAllocator() {
         },
       ]);
       const internalMatches = data.matched_employees || [];
-      const qualifiedInternal = internalMatches.filter((match: MatchedEmployee) => match.match_score >= 50).slice(0, teamSize);
+      const qualifiedInternal = internalMatches
+        .filter((match: MatchedEmployee) => match.matched_skills.length > 0)
+        .slice(0, teamSize);
       setMatches(internalMatches);
       const filteredLearningPaths = Object.fromEntries(
         Object.entries(data.learning_paths || {}).filter(([employeeId]) =>
@@ -275,7 +310,7 @@ export default function ProjectAllocator() {
         ...prev,
         {
           role: 'assistant',
-          content: '[Error: Unable to reach AI agent. Ensure edge functions are deployed.]',
+          content: `[Error: ${err?.message || 'Unable to reach the allocation service. Please sign in again and retry.'}]`,
         },
       ]);
     } finally {
@@ -326,7 +361,10 @@ export default function ProjectAllocator() {
         return;
       }
 
+      const authHeaders = await getFunctionAuthHeaders();
+
       const { data, error } = await supabase.functions.invoke('confirm-team', {
+        headers: authHeaders,
         body: {
           project_id: projectId,
           project_name: projectName || 'New Project',
@@ -561,7 +599,7 @@ export default function ProjectAllocator() {
           </div>
 
             <div className="grid gap-4 md:grid-cols-4">
-              <AnalyticsCard title="Internal Team" value={qualifiedInternalMatches.length} detail="Employees above the 50% match threshold" />
+              <AnalyticsCard title="Internal Team" value={qualifiedInternalMatches.length} detail="Employees with matching required skills" />
               <AnalyticsCard title="Covered Skills" value={coveredRequiredSkills.length} detail="Required skills covered by the internal team" />
               <AnalyticsCard title="External Backfill" value={externalCandidates.length} detail="Resume candidates filling the remaining seats" />
               <AnalyticsCard title="Missing Skills" value={gapSkillCount} detail="Required skills still not covered internally" />
@@ -582,13 +620,13 @@ export default function ProjectAllocator() {
                     Internal workforce shortage detected
                   </div>
                   <p className="mt-1">
-                    Only employees with a 50%+ match are counted toward the internal team. Remaining seats are backfilled from screened resume candidates below.
+                    Not enough internal employees cover the required skills for every seat yet. Remaining seats are backfilled from screened resume candidates below.
                   </p>
                 </div>
               )}
 
               <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4 text-sm text-white/55">
-                Internal staffing rule: only employees with a 50% or higher match are considered assignable. If seats remain open, resume-screened outsiders with 50%+ match are recommended as external backfill.
+                Internal staffing rule: employees are ranked by skill fit first, then proficiency, experience, and current availability. If seats remain open, resume-screened outsiders are recommended as external backfill.
               </div>
 
               {qualifiedInternalMatches.map((match) => (
