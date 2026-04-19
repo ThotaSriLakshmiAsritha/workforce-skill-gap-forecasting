@@ -1,12 +1,13 @@
 import { Link, Navigate } from 'react-router-dom';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
+import { getDefaultWorkspaceRoute } from '../../lib/workspaceRoutes';
 
 export default function Login() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
 
   if (!loading && user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getDefaultWorkspaceRoute(profile?.role)} replace />;
   }
 
   return (

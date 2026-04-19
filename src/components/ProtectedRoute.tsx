@@ -1,17 +1,10 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import type { UserRole } from '../types/database';
+import { getDefaultWorkspaceRoute } from '../lib/workspaceRoutes';
 
 interface ProtectedRouteProps {
   allowedRoles?: UserRole[];
-}
-
-function getDefaultRouteForRole(role: UserRole): string {
-  if (role === 'employee') {
-    return '/employee/profile';
-  }
-
-  return '/org/dashboard';
 }
 
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
@@ -30,14 +23,10 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   if (allowedRoles?.length) {
-    const role = profile?.role;
-
-    if (!role) {
-      return <Navigate to="/login" replace />;
-    }
+    const role = profile?.role ?? 'employee';
 
     if (!allowedRoles.includes(role)) {
-      return <Navigate to={getDefaultRouteForRole(role)} replace />;
+      return <Navigate to={getDefaultWorkspaceRoute(role)} replace />;
     }
   }
 

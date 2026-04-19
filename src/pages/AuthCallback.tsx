@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
+import { getDefaultWorkspaceRoute } from '../lib/workspaceRoutes';
+import type { UserRole } from '../types/database';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -11,6 +13,20 @@ export default function AuthCallback() {
       return;
     }
     handledRef.current = true;
+
+    const navigateToUserWorkspace = async (userId: string) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      navigate(getDefaultWorkspaceRoute(data?.role as UserRole | undefined), { replace: true });
+    };
 
     const handleAuthCallback = async () => {
       try {
@@ -23,23 +39,27 @@ export default function AuthCallback() {
 
         const { data: existingSessionData } = await supabase.auth.getSession();
         if (existingSessionData.session) {
-          navigate('/dashboard', { replace: true });
+          await navigateToUserWorkspace(existingSessionData.session.user.id);
           return;
         }
 
         if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
           if (error) {
             throw error;
           }
 
-          navigate('/dashboard', { replace: true });
+          if (!data.session?.user.id) {
+            throw new Error('OAuth callback did not return a user session.');
+          }
+
+          await navigateToUserWorkspace(data.session.user.id);
           return;
         }
 
         if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
+          const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
@@ -48,7 +68,11 @@ export default function AuthCallback() {
             throw error;
           }
 
-          navigate('/dashboard', { replace: true });
+          if (!data.session?.user.id) {
+            throw new Error('OAuth callback did not return a user session.');
+          }
+
+          await navigateToUserWorkspace(data.session.user.id);
           return;
         }
 
