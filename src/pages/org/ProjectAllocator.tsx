@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Send,
   Bot,
@@ -13,6 +13,7 @@ import {
   TriangleAlert,
   UserRoundSearch,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -80,9 +81,12 @@ const quickStarts = [
   },
 ];
 
+const ALLOCATOR_STATE_KEY = 'orgAllocatorState';
+
 export default function ProjectAllocator() {
   const { user, profile } = useAuth();
   const sessionId = useMemo(() => crypto.randomUUID(), []);
+  const navigate = useNavigate();
 
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: 'Hello! I am the AI Allocation Agent. Describe the project and I will propose the best-fit team.' },
@@ -117,6 +121,10 @@ export default function ProjectAllocator() {
     .slice(0, teamSize);
 
   const remainingSeats = Math.max(teamSize - qualifiedInternalMatches.length, 0);
+  const selectedExternalCandidates = remainingSeats > 0
+    ? externalCandidates.slice(0, remainingSeats)
+    : [];
+  const totalConfirmableMembers = qualifiedInternalMatches.length + selectedExternalCandidates.length;
 
   const uniqueMatchedSkills = new Set(
     qualifiedInternalMatches.flatMap((match) =>
@@ -131,6 +139,81 @@ export default function ProjectAllocator() {
     ? Math.round(matches.reduce((total, match) => total + match.match_score, 0) / matches.length)
     : 0;
   const gapSkillCount = uncoveredRequiredSkills.length;
+
+  const goToResumeScreener = (remainingSeatsOverride?: number) => {
+    const seats = typeof remainingSeatsOverride === 'number' ? remainingSeatsOverride : remainingSeats;
+    const params = new URLSearchParams();
+    if (projectName.trim()) params.set('project', projectName.trim());
+    if (description.trim()) params.set('description', description.trim());
+    if (skillChips.length > 0) params.set('skills', skillChips.join(','));
+    if (teamSize > 0) params.set('teamSize', String(teamSize));
+    if (seats > 0) params.set('remainingSeats', String(seats));
+    navigate(`/org/screener?${params.toString()}`);
+  };
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem(ALLOCATOR_STATE_KEY);
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw) as {
+        messages?: Message[];
+        matches?: MatchedEmployee[];
+        externalCandidates?: ExternalCandidate[];
+        learningPaths?: LearningPathMap;
+        shortage?: boolean;
+        projectName?: string;
+        description?: string;
+        teamSize?: number;
+        timelineWeeks?: number;
+        requiredSkills?: string;
+        projectId?: string | null;
+      };
+
+      if (parsed.messages?.length) setMessages(parsed.messages);
+      if (parsed.matches) setMatches(parsed.matches);
+      if (parsed.externalCandidates) setExternalCandidates(parsed.externalCandidates);
+      if (parsed.learningPaths) setLearningPaths(parsed.learningPaths);
+      if (typeof parsed.shortage === 'boolean') setShortage(parsed.shortage);
+      if (typeof parsed.projectName === 'string') setProjectName(parsed.projectName);
+      if (typeof parsed.description === 'string') setDescription(parsed.description);
+      if (typeof parsed.teamSize === 'number') setTeamSize(parsed.teamSize);
+      if (typeof parsed.timelineWeeks === 'number') setTimelineWeeks(parsed.timelineWeeks);
+      if (typeof parsed.requiredSkills === 'string') setRequiredSkills(parsed.requiredSkills);
+      if (parsed.projectId !== undefined) setProjectId(parsed.projectId ?? null);
+    } catch {
+      // Ignore corrupted snapshot and start fresh.
+    }
+  }, []);
+
+  useEffect(() => {
+    const snapshot = {
+      messages,
+      matches,
+      externalCandidates,
+      learningPaths,
+      shortage,
+      projectName,
+      description,
+      teamSize,
+      timelineWeeks,
+      requiredSkills,
+      projectId,
+    };
+    sessionStorage.setItem(ALLOCATOR_STATE_KEY, JSON.stringify(snapshot));
+  }, [
+    messages,
+    matches,
+    externalCandidates,
+    learningPaths,
+    shortage,
+    projectName,
+    description,
+    teamSize,
+    timelineWeeks,
+    requiredSkills,
+    projectId,
+  ]);
 
   const shortlistExternalCandidates = async (seatCount: number) => {
     if (seatCount <= 0) {
@@ -276,24 +359,34 @@ export default function ProjectAllocator() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorMsg = error.message || 'Allocation service error';
+        throw new Error(`Allocation failed: ${errorMsg}`);
+      }
 
       const clarificationMessage =
         data?.clarification_needed && Array.isArray(data?.clarification_questions)
           ? `I need a bit more detail:\n- ${data.clarification_questions.join('\n- ')}`
           : null;
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: clarificationMessage || data.allocation_reasoning || 'Here is the best team based on your requirements.',
-        },
-      ]);
       const internalMatches = data.matched_employees || [];
       const qualifiedInternal = internalMatches
         .filter((match: MatchedEmployee) => match.matched_skills.length > 0)
         .slice(0, teamSize);
+      const openSeats = Math.max(teamSize - qualifiedInternal.length, 0);
+      const noAvailableInternalMembers = !clarificationMessage && qualifiedInternal.length === 0 && openSeats > 0;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: clarificationMessage
+            || (noAvailableInternalMembers
+              ? 'No currently available internal employees match this project. Moving to external resume backfill.'
+              : data.allocation_reasoning || 'Here is the best team based on your requirements.'),
+        },
+      ]);
+
       setMatches(internalMatches);
       const filteredLearningPaths = Object.fromEntries(
         Object.entries(data.learning_paths || {}).filter(([employeeId]) =>
@@ -301,9 +394,12 @@ export default function ProjectAllocator() {
         )
       ) as LearningPathMap;
       setLearningPaths(filteredLearningPaths);
-      const openSeats = Math.max(teamSize - qualifiedInternal.length, 0);
       await shortlistExternalCandidates(openSeats);
       setShortage(Boolean(data.workforce_shortage) || openSeats > 0);
+
+      if (noAvailableInternalMembers) {
+        goToResumeScreener(openSeats);
+      }
     } catch (err: any) {
       console.error(err);
       setMessages((prev) => [
@@ -351,7 +447,7 @@ export default function ProjectAllocator() {
   };
 
   const confirmTeam = async () => {
-    if (qualifiedInternalMatches.length === 0 || confirming) return;
+    if (totalConfirmableMembers === 0 || confirming) return;
     setConfirming(true);
 
     try {
@@ -374,6 +470,7 @@ export default function ProjectAllocator() {
           timeline_weeks: timelineWeeks,
           session_id: sessionId,
           matched_employees: qualifiedInternalMatches.map((match) => ({ id: match.id, role_in_project: match.job_title || 'Team Member' })),
+          external_candidates: selectedExternalCandidates.map((candidate) => ({ id: candidate.id, role_in_project: 'External Backfill' })),
           learning_paths: learningPaths,
         },
       });
@@ -385,7 +482,7 @@ export default function ProjectAllocator() {
         ...prev,
         {
           role: 'assistant',
-          content: `Internal team confirmed. Created ${data?.assigned_count ?? qualifiedInternalMatches.length} assignments.`,
+          content: `Team confirmed. Created ${data?.assigned_count ?? totalConfirmableMembers} assignments (${data?.internal_assigned_count ?? qualifiedInternalMatches.length} internal, ${data?.external_assigned_count ?? selectedExternalCandidates.length} external).`,
         },
       ]);
     } catch (err: any) {
@@ -590,7 +687,7 @@ export default function ProjectAllocator() {
             </h3>
             <button
               onClick={confirmTeam}
-              disabled={!canConfirmTeam || confirming || qualifiedInternalMatches.length === 0}
+              disabled={!canConfirmTeam || confirming || totalConfirmableMembers === 0}
               className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
               {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -605,7 +702,7 @@ export default function ProjectAllocator() {
               <AnalyticsCard title="Missing Skills" value={gapSkillCount} detail="Required skills still not covered internally" />
             </div>
 
-          {matches.length === 0 ? (
+          {matches.length === 0 && !shortage ? (
             <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[28px] border-2 border-dashed bg-white/80 text-center text-muted-foreground">
               <Users className="mb-3 h-12 w-12 opacity-40" />
               <p className="font-medium">Describe a project to see team recommendations.</p>
@@ -622,6 +719,13 @@ export default function ProjectAllocator() {
                   <p className="mt-1">
                     Not enough internal employees cover the required skills for every seat yet. Remaining seats are backfilled from screened resume candidates below.
                   </p>
+                  <button
+                    type="button"
+                    onClick={goToResumeScreener}
+                    className="mt-3 inline-flex items-center rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                  >
+                    Screen More Resumes For Backfill
+                  </button>
                 </div>
               )}
 
@@ -758,6 +862,15 @@ export default function ProjectAllocator() {
                   ) : (
                     <div className="rounded-[24px] border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm text-white/45">
                       No screened resume candidates above 50% were found to fill the remaining {remainingSeats} seat{remainingSeats === 1 ? '' : 's'}.
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={goToResumeScreener}
+                          className="inline-flex items-center rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                        >
+                          Open Resume Screener
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

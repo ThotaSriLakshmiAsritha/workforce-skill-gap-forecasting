@@ -14,7 +14,9 @@ import {
   Users,
   ScanSearch,
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 
 interface Candidate {
   id: string;
@@ -71,7 +73,20 @@ function buildMockCandidate(file: File, roleTitle: string, requiredSkills: strin
   };
 }
 
+function isTransientAiScreeningError(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('503') ||
+    normalized.includes('service unavailable') ||
+    normalized.includes('high demand') ||
+    normalized.includes('temporarily unavailable') ||
+    normalized.includes('generativelanguage.googleapis.com')
+  );
+}
+
 export default function ResumeScreener() {
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -83,6 +98,39 @@ export default function ResumeScreener() {
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('all');
   const [batchSize, setBatchSize] = useState(3);
   const [uploadError, setUploadError] = useState('');
+  const [contextSkills, setContextSkills] = useState<string[]>([]);
+  const [remainingSeatsHint, setRemainingSeatsHint] = useState<number>(0);
+  const [projectDescription, setProjectDescription] = useState('');
+
+  const getFunctionAuthHeaders = async () => {
+    let { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+      throw error;
+    }
+
+    const expiresAt = data.session?.expires_at ?? 0;
+    const expiresSoon = expiresAt > 0 && expiresAt * 1000 <= Date.now() + 60_000;
+
+    if (!data.session?.access_token || expiresSoon) {
+      const refreshed = await supabase.auth.refreshSession();
+
+      if (refreshed.error) {
+        throw refreshed.error;
+      }
+
+      data = refreshed.data;
+    }
+
+    const accessToken = data.session?.access_token;
+    if (!accessToken) {
+      throw new Error('Your session has expired. Please sign in again.');
+    }
+
+    return {
+      Authorization: `Bearer ${accessToken}`,
+    };
+  };
 
   useEffect(() => {
     const loadJobReqs = async () => {
@@ -92,6 +140,34 @@ export default function ResumeScreener() {
     };
     loadJobReqs();
   }, []);
+
+  useEffect(() => {
+    const project = searchParams.get('project');
+    const description = searchParams.get('description');
+    const skills = searchParams.get('skills');
+    const remainingSeatsParam = Number(searchParams.get('remainingSeats') || 0);
+
+    if (project && !projectName) {
+      setProjectName(project);
+    }
+
+    if (description && !projectDescription) {
+      setProjectDescription(description);
+    }
+
+    if (skills) {
+      const parsedSkills = skills
+        .split(',')
+        .map((skill) => skill.trim())
+        .filter(Boolean);
+      setContextSkills(parsedSkills);
+    }
+
+    if (remainingSeatsParam > 0) {
+      setRemainingSeatsHint(remainingSeatsParam);
+      setBatchSize((prev) => (prev === 3 ? remainingSeatsParam : Math.max(prev, remainingSeatsParam)));
+    }
+  }, [searchParams]);
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -153,35 +229,82 @@ export default function ResumeScreener() {
         return;
       }
 
+      const aiFallbackFiles: string[] = [];
+      const failedFiles: string[] = [];
+
       for (const file of files) {
-        const filePath = `${jobId}/${Date.now()}_${file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('resumes')
-          .upload(filePath, file, { upsert: true });
-        if (uploadError) throw uploadError;
+        try {
+          const filePath = `${jobId}/${Date.now()}_${file.name}`;
+          const { error: uploadError } = await supabase.storage
+            .from('resumes')
+            .upload(filePath, file, { upsert: true });
+          if (uploadError) throw uploadError;
 
-        const { data, error } = await supabase.functions.invoke('screen-resume', {
-          body: { storage_path: filePath, job_requirement_id: jobId },
-        });
+          const authHeaders = await getFunctionAuthHeaders();
+          const { data, error } = await supabase.functions.invoke('screen-resume', {
+            headers: authHeaders,
+            body: { storage_path: filePath, job_requirement_id: jobId },
+          });
 
-        if (error) throw error;
+          if (error) throw error;
 
-        nextCandidates.push({
-          id: Math.random().toString(),
-          candidate_name: data.name || file.name,
-          email: data.email || 'unknown',
-          experience_years: data.total_experience_years || 0,
-          match_score: data.match_score || 0,
-          matched_skills: data.matched_skills || [],
-          missing_skills: data.missing_skills || [],
-          status: 'screened',
-          summary: data.summary,
-        });
+          nextCandidates.push({
+            id: Math.random().toString(),
+            candidate_name: data.name || file.name,
+            email: data.email || 'unknown',
+            experience_years: data.total_experience_years || 0,
+            match_score: data.match_score || 0,
+            matched_skills: data.matched_skills || [],
+            missing_skills: data.missing_skills || [],
+            status: 'screened',
+            summary: data.summary,
+          });
+        } catch (fileErr: any) {
+          let fileErrorMessage = 'Resume screening failed.';
+
+          if (fileErr?.context) {
+            try {
+              const body = await fileErr.context.json();
+              fileErrorMessage = body?.error || body?.message || fileErrorMessage;
+            } catch {
+              try {
+                const text = await fileErr.context.text();
+                if (text) fileErrorMessage = text;
+              } catch {
+                // ignore body parsing failure
+              }
+            }
+          } else if (fileErr?.message) {
+            fileErrorMessage = fileErr.message;
+          }
+
+          if (isTransientAiScreeningError(String(fileErrorMessage))) {
+            nextCandidates.push(
+              buildMockCandidate(file, currentRequirement?.title || 'General Role', requiredSkillsFromTitle)
+            );
+            aiFallbackFiles.push(file.name);
+            continue;
+          }
+
+          failedFiles.push(`${file.name}: ${fileErrorMessage}`);
+        }
       }
 
-      setCandidates((prev) =>
-        [...nextCandidates, ...prev].sort((a, b) => b.match_score - a.match_score)
-      );
+      if (nextCandidates.length > 0) {
+        setCandidates((prev) =>
+          [...nextCandidates, ...prev].sort((a, b) => b.match_score - a.match_score)
+        );
+      }
+
+      if (aiFallbackFiles.length > 0) {
+        setUploadError(
+          `AI service is under high demand. Provisional local screening was used for ${aiFallbackFiles.length} file(s): ${aiFallbackFiles.join(', ')}.`
+        );
+      }
+
+      if (failedFiles.length > 0 && nextCandidates.length === 0) {
+        setUploadError(failedFiles[0]);
+      }
     } catch (err: any) {
       console.error(err);
       let errorMessage = 'Resume upload failed. Please try again and check that the selected files are valid.';
@@ -290,6 +413,12 @@ export default function ResumeScreener() {
               Screening Setup
             </h3>
             <div className="space-y-4 text-sm">
+              {remainingSeatsHint > 0 && (
+                <div className="rounded-2xl border border-brand-borderHi bg-brand-elevated p-4 text-xs text-brand-textSec">
+                  Workforce shortage context detected from Project Allocator: {remainingSeatsHint} remaining seat{remainingSeatsHint === 1 ? '' : 's'}.
+                  Upload a resume batch so we can shortlist external candidates for this gap.
+                </div>
+              )}
               <div>
                 <label className="mb-1 block font-medium">Project Name</label>
                 <input
@@ -324,6 +453,23 @@ export default function ResumeScreener() {
                   onChange={(e) => setBatchSize(Math.max(1, Number(e.target.value) || 1))}
                 />
               </div>
+              {contextSkills.length > 0 && (
+                <div>
+                  <label className="mb-2 block font-medium">Allocator Skill Hints</label>
+                  <div className="flex flex-wrap gap-2">
+                    {contextSkills.map((skill) => (
+                      <span key={skill} className="rounded-full border border-brand-borderHi bg-brand-elevated px-2.5 py-1 text-xs font-medium text-brand-textSec">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {projectDescription && (
+                <div className="rounded-2xl border border-brand-border bg-brand-elevated p-4 text-xs text-brand-textSec">
+                  Project brief: {projectDescription}
+                </div>
+              )}
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-xs text-white/50">
                 Batch mode screens all uploaded resumes against <span className="font-semibold text-foreground">{currentRequirement?.title || 'the selected role'}</span> and surfaces the strongest candidates first.
                 {isDemoMode ? ' Demo mode uses local mock scoring instead of the live edge function.' : ''}

@@ -7,6 +7,8 @@ type ProjectMember = {
   full_name: string;
   job_title?: string | null;
   role_in_project?: string | null;
+  source?: 'internal' | 'external';
+  email?: string | null;
 };
 
 type ProjectSkill = {
@@ -55,10 +57,16 @@ export default function Projects() {
             project_id,
             role_in_project,
             status,
+            external_resume_upload_id,
             employee:profiles!project_assignments_employee_id_fkey(
               id,
               full_name,
               job_title
+            ),
+            external_resume:resume_uploads!project_assignments_external_resume_upload_id_fkey(
+              id,
+              candidate_name,
+              candidate_email
             )
           ),
           project_skills(
@@ -84,12 +92,14 @@ export default function Projects() {
           start_date: project.start_date,
           end_date: project.end_date,
           members: ((project.project_assignments as any[]) || [])
-            .filter((assignment) => assignment.status === 'active' && assignment.employee?.id)
+            .filter((assignment) => assignment.status === 'active' && (assignment.employee?.id || assignment.external_resume?.id))
             .map((assignment) => ({
-              id: assignment.employee.id,
-              full_name: assignment.employee.full_name,
-              job_title: assignment.employee.job_title,
+              id: assignment.employee?.id || assignment.external_resume?.id,
+              full_name: assignment.employee?.full_name || assignment.external_resume?.candidate_name || 'External Candidate',
+              job_title: assignment.employee?.job_title || (assignment.external_resume?.id ? 'External Candidate' : undefined),
               role_in_project: assignment.role_in_project,
+              source: assignment.employee?.id ? 'internal' : 'external',
+              email: assignment.external_resume?.candidate_email || null,
             })),
           skills: ((project.project_skills as any[]) || [])
             .filter((projectSkill) => projectSkill.skill?.id)
@@ -196,10 +206,20 @@ export default function Projects() {
                     {project.members.length > 0 ? (
                       project.members.map((member) => (
                         <div key={member.id} className="rounded-[18px] border border-brand-border bg-brand-surface px-4 py-3">
-                          <div className="font-semibold text-brand-textPri">{member.full_name}</div>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="font-semibold text-brand-textPri">{member.full_name}</div>
+                            {member.source === 'external' && (
+                              <span className="rounded-full border border-brand-borderHi bg-brand-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-textSec">
+                                External
+                              </span>
+                            )}
+                          </div>
                           <div className="mt-1 text-sm text-brand-textSec">
                             {member.role_in_project || member.job_title || 'Team Member'}
                           </div>
+                          {member.source === 'external' && member.email && (
+                            <div className="mt-1 text-xs text-brand-textTer">{member.email}</div>
+                          )}
                         </div>
                       ))
                     ) : (

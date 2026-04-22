@@ -9,6 +9,65 @@ const corsHeaders = {
 
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-flash-latest";
 
+const FALLBACK_MODELS = ["gemini-1.5-flash", "gemini-1.5-pro"];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isTransientAiError = (message: string) => {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("503") ||
+    normalized.includes("service unavailable") ||
+    normalized.includes("high demand") ||
+    normalized.includes("temporarily unavailable") ||
+    normalized.includes("deadline exceeded") ||
+    normalized.includes("rate limit") ||
+    normalized.includes("resource exhausted")
+  );
+};
+
+const runGeminiWithRetry = async (
+  genAI: GoogleGenerativeAI,
+  payload: any,
+): Promise<string> => {
+  const models = [GEMINI_MODEL, ...FALLBACK_MODELS].filter(
+    (value, index, self) => Boolean(value) && self.indexOf(value) === index,
+  );
+
+  let lastError: any = null;
+
+  for (const modelName of models) {
+    const model = genAI.getGenerativeModel({ model: modelName });
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await model.generateContent(payload);
+        return result.response.text();
+      } catch (error: any) {
+        lastError = error;
+        const message = String(error?.message || error || "Unknown AI error");
+        const retryable = isTransientAiError(message);
+        const canRetryAttempt = retryable && attempt < 2;
+
+        if (canRetryAttempt) {
+          await sleep(500 * (attempt + 1));
+          continue;
+        }
+
+        // Try next model for transient outages or model-specific failures.
+        if (retryable || message.toLowerCase().includes("model")) {
+          break;
+        }
+
+        throw error;
+      }
+    }
+  }
+
+  const reason = String(lastError?.message || lastError || "Unknown AI error");
+  throw new Error(`AI resume screening is temporarily unavailable. ${reason}`);
+};
+
 const tryParseJson = (text: string) => {
   try {
     return JSON.parse(text);
@@ -86,7 +145,6 @@ Deno.serve(async (req: Request) => {
         : "application/octet-stream";
 
     const genAI = new GoogleGenerativeAI(Deno.env.get("GEMINI_API_KEY") || "");
-    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
     const prompt = `You are a senior technical recruiter. Extract structured data from the provided resume and score the candidate against the job requirement. Return ONLY valid JSON with no markdown fences:
 {
@@ -106,7 +164,7 @@ Job requirement: ${JSON.stringify(jobReq)}
 
 If the file content is unclear, do your best and keep unknown fields empty or conservative.`;
 
-    const result = await model.generateContent([
+    const output = await runGeminiWithRetry(genAI, [
       { text: prompt },
       {
         inlineData: {
@@ -116,15 +174,15 @@ If the file content is unclear, do your best and keep unknown fields empty or co
       },
     ]);
 
-    let outputText = result.response.text().replace(/```json/g, "").replace(/```/g, "");
+    let outputText = output.replace(/```json/g, "").replace(/```/g, "");
 
     let parsedJson;
     try {
       parsedJson = tryParseJson(outputText);
     } catch {
       const fixPrompt = `Fix this into valid JSON ONLY.\n${outputText}`;
-      const retry = await model.generateContent(fixPrompt);
-      outputText = retry.response.text().replace(/```json/g, "").replace(/```/g, "");
+      const repairedText = await runGeminiWithRetry(genAI, fixPrompt);
+      outputText = repairedText.replace(/```json/g, "").replace(/```/g, "");
       parsedJson = tryParseJson(outputText);
     }
 

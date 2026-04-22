@@ -15,6 +15,10 @@ type ConfirmTeamInput = {
     id: string; // profiles.id (uuid)
     role_in_project?: string | null;
   }>;
+  external_candidates?: Array<{
+    id: string; // resume_uploads.id (uuid)
+    role_in_project?: string | null;
+  }>;
   learning_paths?: Record<
     string,
     Array<{
@@ -80,8 +84,12 @@ Deno.serve(async (req: Request) => {
   if (!payload.project_name?.trim()) {
     return jsonResponse(400, { error: "project_name is required" });
   }
-  if (!payload.matched_employees?.length) {
-    return jsonResponse(400, { error: "matched_employees is required" });
+  const internalMembers = payload.matched_employees ?? [];
+  const externalMembers = payload.external_candidates ?? [];
+  if (internalMembers.length + externalMembers.length === 0) {
+    return jsonResponse(400, {
+      error: "At least one internal employee or external candidate is required",
+    });
   }
 
   // Explicit permission check for clearer UX than a generic RLS failure.
@@ -105,7 +113,7 @@ Deno.serve(async (req: Request) => {
     name: payload.project_name.trim(),
     description: payload.description ?? null,
     status: "active",
-    team_size: payload.team_size ?? payload.matched_employees.length,
+    team_size: payload.team_size ?? (internalMembers.length + externalMembers.length),
     start_date: formatDateOnly(startDate),
     end_date: formatDateOnly(endDate),
   };
@@ -192,36 +200,65 @@ Deno.serve(async (req: Request) => {
   }
 
   // 3) Create assignments
-  const assignmentRows = payload.matched_employees.map((e) => ({
+  const internalAssignmentRows = internalMembers.map((e) => ({
     project_id: projectId,
     employee_id: e.id,
+    external_resume_upload_id: null,
     role_in_project: e.role_in_project ?? "Team Member",
     assigned_by: userId,
     status: "active",
   }));
 
-  const { error: assignmentsErr } = await supabase
-    .from("project_assignments")
-    .upsert(assignmentRows, {
-      onConflict: "project_id,employee_id",
-      ignoreDuplicates: true,
-    });
-  if (assignmentsErr) {
-    return jsonResponse(500, { error: "Failed to create assignments", details: assignmentsErr });
+  if (internalAssignmentRows.length > 0) {
+    const { error: assignmentsErr } = await supabase
+      .from("project_assignments")
+      .upsert(internalAssignmentRows, {
+        onConflict: "project_id,employee_id",
+        ignoreDuplicates: true,
+      });
+    if (assignmentsErr) {
+      return jsonResponse(500, { error: "Failed to create internal assignments", details: assignmentsErr });
+    }
+  }
+
+  const externalAssignmentRows = externalMembers.map((c) => ({
+    project_id: projectId,
+    employee_id: null,
+    external_resume_upload_id: c.id,
+    role_in_project: c.role_in_project ?? "External Backfill",
+    assigned_by: userId,
+    status: "active",
+  }));
+
+  if (externalAssignmentRows.length > 0) {
+    const { error: externalAssignmentsErr } = await supabase
+      .from("project_assignments")
+      .upsert(externalAssignmentRows, {
+        onConflict: "project_id,external_resume_upload_id",
+        ignoreDuplicates: true,
+      });
+    if (externalAssignmentsErr) {
+      return jsonResponse(500, {
+        error: "Failed to create external assignments",
+        details: externalAssignmentsErr,
+      });
+    }
   }
 
   // 4) Update availability
-  const employeeIds = payload.matched_employees.map((e) => e.id);
-  const { error: availabilityErr } = await supabase
-    .from("employee_availability")
-    .update({ status: "in_project", available_from: null })
-    .in("employee_id", employeeIds);
-  if (availabilityErr) {
-    return jsonResponse(500, { error: "Failed to update availability", details: availabilityErr });
+  const employeeIds = internalMembers.map((e) => e.id);
+  if (employeeIds.length > 0) {
+    const { error: availabilityErr } = await supabase
+      .from("employee_availability")
+      .update({ status: "in_project", available_from: null })
+      .in("employee_id", employeeIds);
+    if (availabilityErr) {
+      return jsonResponse(500, { error: "Failed to update availability", details: availabilityErr });
+    }
   }
 
   // 5) Optional: insert learning paths (best-effort)
-  if (payload.learning_paths) {
+  if (payload.learning_paths && employeeIds.length > 0) {
     // Preload skills referenced in learning paths
     const allGapSkills = new Set<string>();
     for (const items of Object.values(payload.learning_paths)) {
@@ -324,6 +361,8 @@ Deno.serve(async (req: Request) => {
   return jsonResponse(200, {
     ok: true,
     project_id: projectId,
-    assigned_count: assignmentRows.length,
+    assigned_count: internalAssignmentRows.length + externalAssignmentRows.length,
+    internal_assigned_count: internalAssignmentRows.length,
+    external_assigned_count: externalAssignmentRows.length,
   });
 });

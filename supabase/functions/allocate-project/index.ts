@@ -56,7 +56,7 @@ const availabilityScore = (status: string | null | undefined): number => {
     case "available":
       return 1;
     case "in_project":
-      return 0.45;
+      return 0;
     case "on_leave":
       return 0.1;
     case "unavailable":
@@ -134,6 +134,9 @@ const dedupeSkills = (skills: EmployeeSkill[]) => {
 
   return Array.from(byName.values());
 };
+
+const isAvailableForAllocation = (status: string | null | undefined) =>
+  (status || "").toLowerCase() === "available";
 
 const parseSkillsInput = (input: unknown): string[] => {
   if (Array.isArray(input)) return input.map((x) => String(x).trim()).filter(Boolean);
@@ -336,7 +339,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: availability, error: availabilityError } = await supabaseClient
       .from("employee_availability")
-      .select("employee_id, status")
+      .select("employee_id, status");
     if (availabilityError) throw availabilityError;
 
     const availabilityByEmployee = new Map<string, string>();
@@ -397,14 +400,19 @@ Deno.serve(async (req: Request) => {
         name: p.full_name,
         job_title: p.job_title,
         years_of_experience: p.years_of_experience,
-        availability_status: availabilityByEmployee.get(p.id) || "available",
+        // Do not assume availability when status is missing.
+        availability_status: availabilityByEmployee.get(p.id) || "unavailable",
         skills: dedupeSkills([
           ...(skillsByEmployee.get(p.id) || []),
           ...(resumeSkillsByEmployee.get(p.id) || []),
         ]),
       }));
 
-    const scored = candidates.map((candidate) => {
+    const availableCandidates = candidates.filter((candidate) =>
+      isAvailableForAllocation(candidate.availability_status)
+    );
+
+    const scored = availableCandidates.map((candidate) => {
       const s = scoreCandidate(candidate, requirements.required_skills);
       return {
         id: candidate.id,
