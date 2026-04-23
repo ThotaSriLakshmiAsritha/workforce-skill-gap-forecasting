@@ -1,0 +1,34 @@
+DAVID LEE
+Backend Engineer
+david.lee@email.com | (555) 456-7890
+
+SUMMARY
+Backend specialist with 5 years of experience designing and implementing scalable server-side applications and APIs.
+
+WORK HISTORY
+
+Backend Engineer | DataFlow Systems | 2021 - Present
+- Designed and implemented RESTful APIs using Node.js and Express
+- Built microservices architecture handling 1M+ requests daily
+- Optimized database queries in PostgreSQL and MongoDB
+- Implemented caching strategies using Redis
+- Wrote comprehensive unit and integration tests
+
+Node.js Developer | API Solutions Co | 2019 - 2021
+- Developed backend services for mobile and web applications
+- Created authentication and authorization systems with JWT
+- Integrated payment gateways (Stripe, PayPal)
+- Maintained and optimized MySQL databases
+- Participated in code reviews and technical discussions
+
+TECHNICAL SKILLS
+Backend: Node.js, Express, NestJS, REST APIs, GraphQL
+Databases: PostgreSQL, MongoDB, MySQL, Redis
+Languages: JavaScript, TypeScript, Python, SQL
+Tools: Git, Docker, Postman, VS Code
+Testing: Jest, Mocha, Chai
+Cloud: AWS (EC2, Lambda, RDS), basic Kubernetes
+
+EDUCATION
+B.S. Computer Science
+University of Technology | 2015 - 2019

@@ -10,7 +10,7 @@ export default {
       fontFamily: {
         display: ['"Playfair Display"', 'serif'],
         mono: ['"DM Mono"', 'monospace'],
-        sans: ['"DM Sans"', 'sans-serif'],
+        sans: ['Inter', '"DM Sans"', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -55,12 +55,21 @@ export default {
           textPri: 'rgb(var(--brand-text-pri) / <alpha-value>)',
           textSec: 'rgb(var(--brand-text-sec) / <alpha-value>)',
           textTer: 'rgb(var(--brand-text-ter) / <alpha-value>)',
+          accent: 'rgb(var(--brand-accent) / <alpha-value>)',
+          accentHover: 'rgb(var(--brand-accent-hover) / <alpha-value>)',
+          accentSoft: 'rgb(var(--brand-accent-soft) / <alpha-value>)',
         },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        'card': '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)',
+        'card-hover': '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)',
+        'nav': '0 1px 0 rgba(0,0,0,0.06)',
+        'dropdown': '0 8px 32px rgba(0,0,0,0.12)',
       },
     },
   },

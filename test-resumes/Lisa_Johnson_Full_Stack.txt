@@ -1,0 +1,37 @@
+LISA JOHNSON
+Full Stack Developer
+Email: lisa.johnson@email.com | LinkedIn: linkedin.com/in/lisajohnson
+
+PROFESSIONAL PROFILE
+Full-stack developer with 6 years of experience building scalable web applications. Expert in JavaScript ecosystem with strong DevOps skills.
+
+PROFESSIONAL EXPERIENCE
+
+Full Stack Developer | CloudTech Solutions | 2019 - Present
+- Architected and developed full-stack applications using React, Node.js, and PostgreSQL
+- Implemented microservices using Docker and Kubernetes
+- Built RESTful and GraphQL APIs serving 500K+ daily requests
+- Managed AWS infrastructure (EC2, S3, RDS, Lambda)
+- Set up CI/CD pipelines using GitHub Actions
+- Reduced deployment time by 60% through automation
+
+Software Developer | Innovation Labs | 2018 - 2019
+- Developed React-based dashboards for data visualization
+- Created backend services with Node.js and Express
+- Integrated third-party APIs (Stripe, SendGrid)
+- Optimized SQL queries reducing load time by 40%
+
+TECHNICAL EXPERTISE
+Frontend: React, Redux, TypeScript, Next.js, Tailwind CSS, Material UI
+Backend: Node.js, Express, NestJS, REST APIs, GraphQL, WebSocket
+Databases: PostgreSQL, MongoDB, Redis, MySQL
+Cloud & DevOps: AWS, Docker, Kubernetes, Terraform, CI/CD, Nginx
+Languages: JavaScript, TypeScript, Python, SQL
+Tools: Git, GitHub, Jira, Postman, VS Code
+
+EDUCATION
+Master of Computer Science | Tech Institute | 2016 - 2018
+Bachelor of Software Engineering | State University | 2012 - 2016
+
+CERTIFICATIONS
+AWS Certified Developer - Associate

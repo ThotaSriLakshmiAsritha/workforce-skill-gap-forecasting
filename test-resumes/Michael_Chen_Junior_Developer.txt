@@ -1,0 +1,37 @@
+MICHAEL CHEN
+Junior Software Developer
+michael.chen@email.com | (555) 345-6789
+
+OBJECTIVE
+Recent computer science graduate seeking a software developer position to apply my programming skills and learn from experienced professionals.
+
+EXPERIENCE
+
+Junior Developer Intern | TechStart Inc | Summer 2023
+- Assisted in developing web applications using React
+- Wrote basic JavaScript functions and components
+- Participated in daily stand-ups and team meetings
+- Fixed minor bugs reported by QA team
+
+PROJECTS
+
+E-Commerce Website (Personal Project)
+- Built a shopping cart application using React and Node.js
+- Implemented user authentication
+- Designed database schema in PostgreSQL
+
+Task Manager App (University Capstone)
+- Created a to-do list application with React
+- Used local storage for data persistence
+- Implemented responsive design
+
+SKILLS
+Languages: JavaScript, Python, Java, HTML, CSS
+Technologies: React, Node.js, Git
+Databases: PostgreSQL, MongoDB (basic)
+Learning: TypeScript, AWS, Docker
+
+EDUCATION
+Bachelor of Science in Computer Science
+City College | 2019 - 2023
+GPA: 3.6/4.0

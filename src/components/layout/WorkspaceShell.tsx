@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
-  ChevronsLeft,
   Command,
   LogOut,
   Search,
   Sparkles,
+  UserCircle2,
   X,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -33,14 +33,12 @@ interface WorkspaceShellProps {
 export function WorkspaceShell({
   badge,
   title,
-  subtitle,
   roleLabel,
   homeHref,
   switchHref,
   switchLabel,
   navItems,
 }: WorkspaceShellProps) {
-  const [collapsed, setCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [query, setQuery] = useState('');
   const { profile, signOut } = useAuth();
@@ -53,11 +51,8 @@ export function WorkspaceShell({
         event.preventDefault();
         setPaletteOpen((value) => !value);
       }
-      if (event.key === 'Escape') {
-        setPaletteOpen(false);
-      }
+      if (event.key === 'Escape') setPaletteOpen(false);
     };
-
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
@@ -83,7 +78,6 @@ export function WorkspaceShell({
           action: () => navigate(homeHref),
         },
       ];
-
       if (switchHref && switchLabel) {
         actions.push({
           id: switchHref,
@@ -92,7 +86,6 @@ export function WorkspaceShell({
           action: () => navigate(switchHref),
         });
       }
-
       return actions.filter((item) =>
         [item.label, item.description].join(' ').toLowerCase().includes(query.trim().toLowerCase())
       );
@@ -100,187 +93,179 @@ export function WorkspaceShell({
     [homeHref, navItems, navigate, query, switchHref, switchLabel]
   );
 
+  const firstLetter = profile?.full_name?.charAt(0)?.toUpperCase() || 'U';
+
   return (
-    <div className="min-h-screen bg-brand-bg text-brand-textPri">
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute left-[-8%] top-[-12%] h-80 w-80 rounded-full bg-white/8 blur-3xl" />
-        <div className="absolute right-[-10%] top-[8%] h-96 w-96 rounded-full bg-white/6 blur-3xl" />
-        <div className="absolute bottom-[-14%] left-[24%] h-96 w-96 rounded-full bg-white/5 blur-3xl" />
-      </div>
+    <div className="min-h-screen" style={{ background: 'rgb(var(--brand-bg))' }}>
+      {/* ── Top Navigation Bar ── */}
+      <header className="sticky top-0 z-30 border-b border-brand-border bg-brand-surface/90 backdrop-blur-xl shadow-nav">
+        <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-5 py-3">
 
-      <div className="relative mx-auto flex min-h-screen max-w-[1600px]">
-        <aside
-          className={`hidden border-r border-brand-border bg-brand-surface backdrop-blur-xl transition-all duration-300 md:sticky md:top-0 md:flex md:h-screen md:flex-col ${
-            collapsed ? 'w-24' : 'w-80'
-          }`}
-        >
-          <div className="flex items-center justify-between border-b border-brand-border px-5 py-5">
-            <Link to="/" className={`inline-flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
-              <div className="flex h-11 w-11 items-center justify-center rounded-md bg-brand-textPri font-mono text-sm font-black text-brand-bg">
-                SS
-              </div>
-              {!collapsed && (
-                <div>
-                  <div className="font-mono text-sm font-semibold uppercase tracking-[0.28em] text-brand-textSec">{badge}</div>
-                  <div className="text-lg font-bold">{title}</div>
-                </div>
-              )}
-            </Link>
-            <button
-              type="button"
-              onClick={() => setCollapsed((value) => !value)}
-              className="rounded border border-brand-border bg-brand-elevated p-2 text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri"
-            >
-              <ChevronsLeft className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-
-          {!collapsed && (
-            <div className="border-b border-brand-border px-5 py-5">
-              <p className="text-sm text-brand-textSec">{subtitle}</p>
+          {/* Logo */}
+          <Link to="/" className="flex shrink-0 items-center gap-2.5 mr-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-accent font-bold text-sm text-white shadow-sm">
+              SS
             </div>
-          )}
+            <div className="hidden sm:block">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.26em] text-brand-textTer">
+                {badge}
+              </div>
+              <div className="text-sm font-bold text-brand-textPri leading-tight">{title}</div>
+            </div>
+          </Link>
 
-          <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-5">
+          {/* Nav pills */}
+          <nav className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0">
             {navItems.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 rounded px-4 py-3 font-mono text-sm font-medium transition ${
+                  `flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all whitespace-nowrap ${
                     isActive
-                      ? 'border border-brand-borderHi bg-brand-elevated text-brand-textPri shadow-[0_0_0_1px_#2E2E2E]'
-                      : 'border border-transparent text-brand-textSec hover:border-brand-border hover:bg-brand-elevated hover:text-brand-textPri'
-                  } ${collapsed ? 'justify-center' : ''}`
+                      ? 'bg-brand-accent/10 text-brand-accent font-semibold'
+                      : 'text-brand-textSec hover:bg-brand-elevated hover:text-brand-textPri'
+                  }`
                 }
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                {!collapsed && label}
+                <span className="hidden md:inline">{label}</span>
               </NavLink>
             ))}
           </nav>
 
-          <div className="shrink-0 border-t border-brand-border px-4 py-4">
-            {switchHref && switchLabel ? (
+          {/* Right controls */}
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Search */}
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="hidden lg:flex items-center gap-2 rounded-xl border border-brand-border bg-brand-elevated px-3 py-2 text-sm text-brand-textTer hover:border-brand-borderHi hover:text-brand-textSec transition-all"
+            >
+              <Search className="h-4 w-4" />
+              <span className="text-xs">Search…</span>
+              <span className="ml-1 flex items-center gap-0.5 rounded-md border border-brand-border bg-brand-surface px-1.5 py-0.5 text-[10px] font-mono text-brand-textTer">
+                <Command className="h-2.5 w-2.5" />K
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="lg:hidden flex h-9 w-9 items-center justify-center rounded-xl border border-brand-border bg-brand-elevated text-brand-textSec hover:text-brand-textPri transition-all"
+              aria-label="Search"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+
+            {/* Bell */}
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-brand-border bg-brand-elevated text-brand-textSec">
+              <Bell className="h-4 w-4" />
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-accent" />
+            </div>
+
+            {/* Theme toggle */}
+            <ThemeToggle compact />
+
+            {/* Switch workspace */}
+            {switchHref && switchLabel && (
               <Link
                 to={switchHref}
-                className={`mb-3 flex items-center gap-3 rounded border border-brand-border bg-brand-elevated px-4 py-3 font-mono text-sm font-medium text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri ${
-                  collapsed ? 'justify-center' : ''
-                }`}
+                className="hidden md:flex items-center gap-1.5 rounded-xl border border-brand-accent/30 bg-brand-accent/8 px-3 py-2 text-xs font-semibold text-brand-accent hover:bg-brand-accent/15 transition-all"
               >
-                <Sparkles className="h-4 w-4 shrink-0 text-brand-textPri" />
-                {!collapsed && switchLabel}
+                <Sparkles className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline">{switchLabel}</span>
               </Link>
-            ) : null}
+            )}
+
+            {/* Sign out */}
             <button
               type="button"
               onClick={signOut}
-              className={`flex w-full items-center gap-3 rounded border border-brand-border bg-brand-elevated px-4 py-3 font-mono text-sm font-medium text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri ${
-                collapsed ? 'justify-center' : ''
-              }`}
+              className="hidden md:flex h-9 w-9 items-center justify-center rounded-xl border border-brand-border bg-brand-elevated text-brand-textTer hover:text-brand-textPri hover:border-brand-borderHi transition-all"
+              aria-label="Sign out"
+              title="Sign out"
             >
-              <LogOut className="h-4 w-4 shrink-0" />
-              {!collapsed && 'Sign Out'}
+              <LogOut className="h-4 w-4" />
             </button>
-          </div>
-        </aside>
 
-        <div className="flex min-h-screen flex-1 flex-col">
-          <header className="sticky top-0 z-20 border-b border-brand-border bg-brand-bg/85 backdrop-blur-xl">
-            <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-8">
-              <div>
-                <div className="font-mono text-xs font-semibold uppercase tracking-[0.28em] text-brand-textTer">{roleLabel}</div>
-                <div className="text-xl font-bold">{profile?.full_name || 'SkillSync User'}</div>
+            {/* User chip */}
+            <div className="flex items-center gap-2 rounded-xl border border-brand-border bg-brand-elevated pl-1 pr-3 py-1">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-accent text-white text-xs font-bold">
+                {firstLetter}
               </div>
-
-              <div className="flex flex-1 items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPaletteOpen(true)}
-                  className="hidden min-w-[280px] items-center gap-3 rounded border border-brand-border bg-brand-elevated px-4 py-3 font-mono text-sm text-brand-textTer transition hover:border-brand-borderHi md:flex"
-                >
-                  <Search className="h-4 w-4" />
-                  Search skills, people, projects
-                  <span className="ml-auto inline-flex items-center gap-1 rounded border border-brand-border bg-brand-bg px-2 py-1 text-[11px] uppercase tracking-[0.2em]">
-                    <Command className="h-3 w-3" />K
-                  </span>
-                </button>
-                <div className="relative inline-flex h-11 w-11 items-center justify-center rounded border border-brand-border bg-brand-elevated text-brand-textSec">
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-brand-textPri" />
+              <div className="hidden sm:block">
+                <div className="text-xs font-semibold text-brand-textPri leading-tight truncate max-w-[100px]">
+                  {profile?.full_name?.split(' ')[0] || 'User'}
                 </div>
-                <ThemeToggle compact />
-                <div className="hidden rounded border border-brand-border bg-brand-elevated px-4 py-3 font-mono text-sm font-medium text-brand-textSec md:block">
-                  {profile?.role || roleLabel}
-                </div>
-                <Link
-                  to={homeHref}
-                  className="rounded border border-brand-textPri bg-brand-textPri px-4 py-3 font-mono text-sm font-medium text-brand-bg transition hover:bg-brand-bg hover:text-brand-textPri"
-                >
-                  Home
-                </Link>
+                <div className="text-[10px] text-brand-textTer leading-tight">{roleLabel}</div>
               </div>
             </div>
-          </header>
-
-          <main key={location.pathname} className="page-enter relative flex-1 px-4 py-6 md:px-8 md:py-8">
-            <Outlet />
-          </main>
+          </div>
         </div>
-      </div>
+      </header>
 
+      {/* ── Main Content ── */}
+      <main
+        key={location.pathname}
+        className="page-enter mx-auto max-w-[1600px] px-4 py-6 md:px-8 md:py-8"
+      >
+        <Outlet />
+      </main>
+
+      {/* ── Command Palette ── */}
       {paletteOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/55 px-4 pt-24 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-[28px] border border-brand-border bg-brand-elevated/95 shadow-[0_40px_120px_rgba(0,0,0,0.55)]">
-            <div className="flex items-center gap-3 border-b border-brand-border px-5 py-4">
-              <Search className="h-4 w-4 text-white/45" />
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 px-4 pt-20 backdrop-blur-sm"
+          onClick={() => setPaletteOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-2xl border border-brand-border bg-brand-surface shadow-dropdown"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 border-b border-brand-border px-4 py-3">
+              <Search className="h-4 w-4 text-brand-textTer" />
               <input
                 autoFocus
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Jump to dashboards, pages, or actions..."
-                className="flex-1 bg-transparent font-mono text-sm text-brand-textPri outline-none placeholder:text-brand-textTer"
+                placeholder="Jump to a page or action…"
+                className="flex-1 bg-transparent text-sm text-brand-textPri outline-none placeholder:text-brand-textTer"
               />
               <button
                 type="button"
                 onClick={() => setPaletteOpen(false)}
-                className="rounded border border-brand-border bg-brand-surface p-2 text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri"
+                className="rounded-lg border border-brand-border bg-brand-elevated p-1.5 text-brand-textSec hover:text-brand-textPri transition"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
-            <div className="max-h-[420px] overflow-y-auto p-3">
+            <div className="max-h-[400px] overflow-y-auto p-2">
               {quickActions.length > 0 ? (
                 quickActions.map((item) => (
                   <button
                     key={item.id}
                     type="button"
                     onClick={item.action}
-                    className="flex w-full items-center justify-between rounded px-4 py-3 text-left transition hover:bg-brand-surface"
+                    className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition hover:bg-brand-elevated"
                   >
                     <div>
-                      <div className="font-mono font-medium text-brand-textPri">{item.label}</div>
-                      <div className="mt-1 text-sm text-brand-textTer">{item.description}</div>
+                      <div className="text-sm font-semibold text-brand-textPri">{item.label}</div>
+                      <div className="mt-0.5 text-xs text-brand-textTer">{item.description}</div>
                     </div>
-                    <ArrowHint />
+                    <UserCircle2 className="h-4 w-4 text-brand-textTer" />
                   </button>
                 ))
               ) : (
-                <div className="px-4 py-8 text-center text-sm text-brand-textTer">No matching actions found.</div>
+                <div className="px-4 py-8 text-center text-sm text-brand-textTer">
+                  No matching actions found.
+                </div>
               )}
             </div>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function ArrowHint() {
-  return (
-    <div className="inline-flex items-center gap-1 rounded border border-brand-border bg-brand-surface px-2 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-brand-textTer">
-      Enter
     </div>
   );
 }

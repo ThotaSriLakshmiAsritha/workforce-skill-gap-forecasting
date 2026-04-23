@@ -1,0 +1,40 @@
+EMMA WILSON
+Senior Frontend Developer
+emma.wilson@email.com | Portfolio: emmawilson.dev
+
+ABOUT ME
+Creative frontend developer with 7 years of experience crafting beautiful, performant, and accessible web applications.
+
+EXPERIENCE
+
+Senior Frontend Developer | DesignTech | 2020 - Present
+- Lead frontend development for enterprise React applications
+- Mentor team of 5 junior developers
+- Implement responsive designs with Tailwind CSS
+- Optimize application performance (achieved 95+ Lighthouse scores)
+- Conduct accessibility audits (WCAG 2.1 compliance)
+
+Frontend Developer | Creative Agency | 2018 - 2020
+- Built interactive web applications using React
+- Created reusable component libraries
+- Collaborated with designers using Figma
+- Implemented state management with Redux
+- Worked with REST APIs and GraphQL
+
+Junior Developer | Web Studio | 2017 - 2018
+- Developed responsive websites with HTML, CSS, JavaScript
+- Learned React and modern JavaScript
+- Fixed cross-browser compatibility issues
+
+SKILLS
+Frontend Frameworks: React, Next.js, Vue.js
+Languages: JavaScript, TypeScript, HTML5, CSS3
+Styling: Tailwind CSS, Styled Components, SASS, Material UI
+State Management: Redux, Context API, Zustand
+Tools: Git, Webpack, Vite, Figma, Adobe XD
+Testing: Jest, React Testing Library, Cypress
+Basic Backend: Node.js, Express (for full-stack projects)
+
+EDUCATION
+Bachelor of Arts in Web Design & Development
+Design College | 2013 - 2017

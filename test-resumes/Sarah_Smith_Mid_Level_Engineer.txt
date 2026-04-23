@@ -1,0 +1,31 @@
+SARAH SMITH
+Software Engineer
+Email: sarah.smith@email.com
+Phone: (555) 234-5678
+
+PROFESSIONAL SUMMARY
+Mid-level software engineer with 4 years of experience in web development. Passionate about creating efficient and scalable solutions.
+
+WORK EXPERIENCE
+
+Software Engineer | WebDev Solutions | 2021 - Present
+- Developed and maintained React applications
+- Created RESTful APIs using Node.js
+- Worked with MySQL and PostgreSQL databases
+- Participated in code reviews and sprint planning
+
+Junior Developer | Digital Agency | 2020 - 2021
+- Built responsive websites using HTML, CSS, JavaScript
+- Assisted in React component development
+- Fixed bugs and implemented new features
+- Learned Git and version control best practices
+
+TECHNICAL SKILLS
+Programming: JavaScript, HTML5, CSS3, SQL
+Frameworks: React, Node.js, Express
+Databases: MySQL, PostgreSQL
+Tools: Git, VS Code, Postman, Slack
+
+EDUCATION
+Bachelor of Computer Science
+Tech University | 2016 - 2020

@@ -13,7 +13,7 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 const STORAGE_KEY = 'skillsync-theme';
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>('dark');
+  const [theme, setThemeState] = useState<ThemeMode>('light');
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
@@ -28,7 +28,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.toggle('light', theme === 'light');
+    root.classList.toggle('dark', theme === 'dark');
     localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 

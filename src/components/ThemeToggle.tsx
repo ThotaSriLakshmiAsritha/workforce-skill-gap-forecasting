@@ -8,14 +8,14 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
     <button
       type="button"
       onClick={toggleTheme}
-      className={`inline-flex items-center gap-2 rounded border border-brand-border bg-brand-elevated px-3 py-2 font-mono text-xs font-medium uppercase tracking-[0.16em] text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri ${
-        compact ? 'px-2.5 py-2' : ''
+      className={`inline-flex items-center gap-2 rounded-xl border border-brand-border bg-brand-elevated text-brand-textSec transition hover:border-brand-borderHi hover:text-brand-textPri ${
+        compact ? 'h-9 w-9 justify-center' : 'px-3 py-2 text-xs font-medium'
       }`}
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
       title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
     >
-      {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-      {!compact && (theme === 'dark' ? 'Light' : 'Dark')}
+      {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      {!compact && (theme === 'dark' ? 'Light mode' : 'Dark mode')}
     </button>
   );
 }

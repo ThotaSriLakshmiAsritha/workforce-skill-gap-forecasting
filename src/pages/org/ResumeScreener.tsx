@@ -48,7 +48,7 @@ function normalizeName(value: string) {
   return value.trim().toLowerCase();
 }
 
-function buildMockCandidate(file: File, roleTitle: string, requiredSkills: string[]): Candidate {
+function buildMockCandidate(file: File, roleTitle: string, requiredSkills: string[], minExperience?: number): Candidate {
   const baseName = file.name.replace(/\.[^.]+$/, '');
   const seed = Array.from(file.name).reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
   const fallbackSkills = mockSkillLibrary[normalizeName(roleTitle)] || mockSkillLibrary.default;
@@ -60,12 +60,22 @@ function buildMockCandidate(file: File, roleTitle: string, requiredSkills: strin
   const matchScore = Math.max(42, Math.min(91, scoreBase + (seed % 7) - 3));
   const experienceYears = (seed % 6) + 2;
 
+  // Adjust score based on experience requirement
+  let adjustedScore = matchScore;
+  if (minExperience && minExperience > 0) {
+    if (experienceYears >= minExperience) {
+      adjustedScore = Math.min(100, matchScore + 5);
+    } else {
+      adjustedScore = Math.max(0, matchScore - 10);
+    }
+  }
+
   return {
     id: `mock-${file.name}-${Date.now()}`,
     candidate_name: baseName.replace(/[_-]+/g, ' '),
     email: 'demo-candidate@example.com',
     experience_years: experienceYears,
-    match_score: matchScore,
+    match_score: adjustedScore,
     matched_skills: matchedSkills,
     missing_skills: missingSkills,
     status: 'screened',
@@ -94,6 +104,8 @@ export default function ResumeScreener() {
   const [jobRequirements, setJobRequirements] = useState<JobRequirement[]>([]);
   const [jobId, setJobId] = useState('');
   const [projectName, setProjectName] = useState('');
+  const [requiredSkills, setRequiredSkills] = useState('');
+  const [requiredExperience, setRequiredExperience] = useState('');
   const [minScore, setMinScore] = useState(50);
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('all');
   const [batchSize, setBatchSize] = useState(3);
@@ -141,6 +153,7 @@ export default function ResumeScreener() {
     loadJobReqs();
   }, []);
 
+  // Load context from URL params
   useEffect(() => {
     const project = searchParams.get('project');
     const description = searchParams.get('description');
@@ -168,6 +181,86 @@ export default function ResumeScreener() {
       setBatchSize((prev) => (prev === 3 ? remainingSeatsParam : Math.max(prev, remainingSeatsParam)));
     }
   }, [searchParams]);
+
+  // Load existing resumes from database
+  useEffect(() => {
+    const loadExistingResumes = async () => {
+      if (!jobId) return;
+
+      const { data, error } = await supabase
+        .from('resume_uploads')
+        .select('id, candidate_name, candidate_email, experience_years, match_score, matched_skills, missing_skills, ai_summary, status')
+        .eq('job_requirement_id', jobId)
+        .order('match_score', { ascending: false });
+
+      if (!error && data) {
+        const loadedCandidates: Candidate[] = data.map(resume => ({
+          id: resume.id,
+          candidate_name: resume.candidate_name || 'Unknown',
+          email: resume.candidate_email || 'unknown',
+          experience_years: resume.experience_years || 0,
+          match_score: resume.match_score || 0,
+          matched_skills: resume.matched_skills || [],
+          missing_skills: resume.missing_skills || [],
+          status: resume.status === 'shortlisted' ? 'shortlisted' : 'screened',
+          summary: resume.ai_summary,
+        }));
+        setCandidates(loadedCandidates);
+      }
+    };
+
+    loadExistingResumes();
+
+    // Set up real-time subscription for new resumes
+    const channel = supabase
+      .channel('resume_uploads_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'resume_uploads',
+          filter: `job_requirement_id=eq.${jobId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newResume = payload.new as any;
+            const newCandidate: Candidate = {
+              id: newResume.id,
+              candidate_name: newResume.candidate_name || 'Unknown',
+              email: newResume.candidate_email || 'unknown',
+              experience_years: newResume.experience_years || 0,
+              match_score: newResume.match_score || 0,
+              matched_skills: newResume.matched_skills || [],
+              missing_skills: newResume.missing_skills || [],
+              status: newResume.status === 'shortlisted' ? 'shortlisted' : 'screened',
+              summary: newResume.ai_summary,
+            };
+            setCandidates((prev) => [newCandidate, ...prev].sort((a, b) => b.match_score - a.match_score));
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedResume = payload.new as any;
+            setCandidates((prev) =>
+              prev.map((candidate) =>
+                candidate.id === updatedResume.id
+                  ? {
+                      ...candidate,
+                      status: updatedResume.status === 'shortlisted' ? 'shortlisted' : updatedResume.status === 'rejected' ? 'rejected' : 'screened',
+                      match_score: updatedResume.match_score || candidate.match_score,
+                    }
+                  : candidate
+              )
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setCandidates((prev) => prev.filter((candidate) => candidate.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [jobId]);
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -214,16 +307,25 @@ export default function ResumeScreener() {
     setUploading(true);
     const nextCandidates: Candidate[] = [];
     const currentRequirement = jobRequirements.find((requirement) => requirement.id === jobId);
+
+    // Use custom skills if provided, otherwise derive from job title
+    const customSkillsList = requiredSkills
+      .split(',')
+      .map((skill) => skill.trim())
+      .filter(Boolean);
     const requiredSkillsFromTitle = (currentRequirement?.title || '')
       .split(/[\/,&]| and /i)
       .map((skill) => skill.trim())
       .filter(Boolean);
+    const finalSkillsList = customSkillsList.length > 0 ? customSkillsList : requiredSkillsFromTitle;
+    const minExperience = requiredExperience ? parseInt(requiredExperience) : undefined;
+
     const isDemoMode = Boolean(sessionStorage.getItem('mockRole'));
 
     try {
       if (isDemoMode) {
         const mockCandidates = files.map((file) =>
-          buildMockCandidate(file, currentRequirement?.title || 'General Role', requiredSkillsFromTitle)
+          buildMockCandidate(file, currentRequirement?.title || 'General Role', finalSkillsList, minExperience)
         );
         setCandidates((prev) => [...mockCandidates, ...prev].sort((a, b) => b.match_score - a.match_score));
         return;
@@ -333,7 +435,7 @@ export default function ResumeScreener() {
         normalizedError.includes('functionshttperror')
       ) {
         const mockCandidates = files.map((file) =>
-          buildMockCandidate(file, currentRequirement?.title || 'General Role', requiredSkillsFromTitle)
+          buildMockCandidate(file, currentRequirement?.title || 'General Role', finalSkillsList, minExperience)
         );
         setCandidates((prev) => [...mockCandidates, ...prev].sort((a, b) => b.match_score - a.match_score));
         setUploadError('Live resume screening is unavailable for this session, so demo screening results were generated locally.');
@@ -351,10 +453,23 @@ export default function ResumeScreener() {
     fileInputRef.current?.click();
   };
 
-  const updateCandidateStatus = (candidateId: string, status: 'shortlisted' | 'rejected') => {
+  const updateCandidateStatus = async (candidateId: string, status: 'shortlisted' | 'rejected') => {
+    // Update local state
     setCandidates((prev) =>
       prev.map((candidate) => (candidate.id === candidateId ? { ...candidate, status } : candidate))
     );
+
+    // Persist to database if not a mock candidate
+    if (!candidateId.startsWith('mock-')) {
+      try {
+        await supabase
+          .from('resume_uploads')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', candidateId);
+      } catch (error) {
+        console.error('Failed to update candidate status:', error);
+      }
+    }
   };
 
   const filteredCandidates = candidates.filter((candidate) => {
@@ -443,6 +558,29 @@ export default function ResumeScreener() {
                 </select>
               </div>
               <div>
+                <label className="mb-1 block font-medium">Required Skills</label>
+                <input
+                  className="w-full rounded-2xl border border-brand-border bg-brand-elevated px-3 py-2.5 text-brand-textPri placeholder:text-brand-textTer"
+                  value={requiredSkills}
+                  onChange={(e) => setRequiredSkills(e.target.value)}
+                  placeholder="e.g., React, Node.js, SQL, Git"
+                />
+                <p className="mt-1 text-xs text-brand-textTer">Comma-separated list of skills required for this project</p>
+              </div>
+              <div>
+                <label className="mb-1 block font-medium">Required Experience (years)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={30}
+                  className="w-full rounded-2xl border border-brand-border bg-brand-elevated px-3 py-2.5 text-brand-textPri placeholder:text-brand-textTer"
+                  value={requiredExperience}
+                  onChange={(e) => setRequiredExperience(e.target.value)}
+                  placeholder="e.g., 3"
+                />
+                <p className="mt-1 text-xs text-brand-textTer">Minimum years of experience needed</p>
+              </div>
+              <div>
                 <label className="mb-1 block font-medium">Top Picks to Highlight</label>
                 <input
                   type="number"
@@ -471,8 +609,17 @@ export default function ResumeScreener() {
                 </div>
               )}
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-xs text-white/50">
-                Batch mode screens all uploaded resumes against <span className="font-semibold text-foreground">{currentRequirement?.title || 'the selected role'}</span> and surfaces the strongest candidates first.
-                {isDemoMode ? ' Demo mode uses local mock scoring instead of the live edge function.' : ''}
+                <p className="mb-2">
+                  Batch mode screens all uploaded resumes against <span className="font-semibold text-foreground">{currentRequirement?.title || 'the selected role'}</span> and surfaces the strongest candidates first.
+                </p>
+                {(requiredSkills || requiredExperience) && (
+                  <p className="mb-2 text-brand-textPri">
+                    <span className="font-semibold">Custom filters:</span>
+                    {requiredSkills && ` Skills: ${requiredSkills}`}
+                    {requiredExperience && ` | Min Experience: ${requiredExperience} years`}
+                  </p>
+                )}
+                <p>{isDemoMode ? 'Demo mode uses local mock scoring instead of the live edge function.' : ''}</p>
               </div>
             </div>
           </div>
