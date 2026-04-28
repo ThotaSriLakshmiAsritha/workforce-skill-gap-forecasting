@@ -29,6 +29,9 @@ interface ParseResult {
   experience_years: number | null;
   education: string | null;
   summary: string | null;
+  extracted_skills: ExtractedSkill[];
+  extracted_experiences: ExtractedExperience[];
+  extracted_projects: ExtractedProject[];
 }
 
 interface ExtractedSkill {
@@ -147,33 +150,11 @@ export default function EmployeeResumeScreener() {
       return;
     }
 
-    // Step 2: Create parse record
-    const { data: parseRecord, error: insertError } = await supabase
-      .from('employee_resume_parses')
-      .insert({
-        employee_id: user.id,
-        storage_path: storagePath,
-        file_name: file.name,
-        status: 'pending',
-      })
-      .select()
-      .single();
-
-    const parseHistoryUnavailable = !!insertError && (
-      insertError.message.includes('Could not find the table') || insertError.code === '42P01'
-    );
-    const parseRecordId = parseRecord?.id ?? null;
-
-    if (insertError && !parseHistoryUnavailable) {
-      setError(`Could not create parse record: ${insertError.message}`);
-      setStatus('error');
-      return;
-    }
-
-    // Step 3: Call edge function
+    // Step 2: Call edge function first.
+    // The function creates the employee profile with service-role access before we save parse history.
     setStatus('parsing');
     const { data: fnResult, error: fnError } = await supabase.functions.invoke('parse-employee-resume', {
-      body: { storage_path: storagePath, parse_id: parseRecordId },
+      body: { storage_path: storagePath },
     });
 
     if (fnError || fnResult?.error) {
@@ -199,21 +180,57 @@ export default function EmployeeResumeScreener() {
         setError(String(errorMessage));
       }
       setStatus('error');
-      // Refresh history to show error state
-      await queryClient.invalidateQueries({ queryKey: ['employee-resume-parses', user.id] });
       return;
     }
 
     setResult(fnResult as ParseResult);
 
-    // Fetch the completed parse record for display
-    if (parseRecordId) {
-      const { data: completedParse } = await supabase
-        .from('employee_resume_parses')
-        .select('*')
-        .eq('id', parseRecordId)
-        .single();
-      if (completedParse) setLatestParse(completedParse as ParseRecord);
+    // Step 3: Save parse history after the parser has already created the profile.
+    const parsePayload = {
+      employee_id: user.id,
+      storage_path: storagePath,
+      file_name: file.name,
+      extracted_skills: fnResult?.extracted_skills ?? [],
+      extracted_experiences: fnResult?.extracted_experiences ?? [],
+      extracted_projects: fnResult?.extracted_projects ?? [],
+      extracted_job_title: fnResult?.job_title ?? null,
+      extracted_experience_years: fnResult?.experience_years ?? null,
+      extracted_education: fnResult?.education ?? null,
+      extracted_summary: fnResult?.summary ?? null,
+      status: 'completed',
+    };
+
+    const { data: existingParse } = await supabase
+      .from('employee_resume_parses')
+      .select('id')
+      .eq('employee_id', user.id)
+      .eq('storage_path', storagePath)
+      .maybeSingle();
+
+    const saveParse = existingParse?.id
+      ? supabase
+          .from('employee_resume_parses')
+          .update(parsePayload)
+          .eq('id', existingParse.id)
+          .select()
+          .single()
+      : supabase
+          .from('employee_resume_parses')
+          .insert(parsePayload)
+          .select()
+          .single();
+
+    const { data: parseRecord, error: insertError } = await saveParse;
+
+    if (insertError) {
+      setError(`Could not save parse history: ${insertError.message}`);
+      setStatus('error');
+      await queryClient.invalidateQueries({ queryKey: ['employee-resume-parses', user.id] });
+      return;
+    }
+
+    if (parseRecord) {
+      setLatestParse(parseRecord as ParseRecord);
     }
 
     setStatus('done');
@@ -265,7 +282,7 @@ export default function EmployeeResumeScreener() {
           </div>
           <div className="flex flex-col gap-2 text-right">
             <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-textTer">Powered by</div>
-            <div className="text-lg font-bold text-brand-textPri">Gemini 1.5 Pro</div>
+            <div className="text-lg font-bold text-brand-textPri">Groq</div>
             <div className="text-xs text-brand-textSec">Google AI</div>
           </div>
         </div>
