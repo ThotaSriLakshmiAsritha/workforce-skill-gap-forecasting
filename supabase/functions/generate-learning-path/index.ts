@@ -1,6 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js";
-import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,8 +7,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const GEMINI_MODEL =
-  Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-flash-latest";
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY")?.trim() || Deno.env.get("groq")?.trim() || "";
+const GROQ_MODEL = Deno.env.get("GROQ_MODEL")?.trim() || "llama-3.3-70b-versatile";
+const GROQ_MODEL_FALLBACKS = (Deno.env.get("GROQ_MODEL_FALLBACKS")?.split(",") ?? [
+  "openai/gpt-oss-120b",
+]).map((value) => value.trim()).filter(Boolean);
+const GROQ_API_URL = Deno.env.get("GROQ_API_URL")?.trim() || "https://api.groq.com/openai/v1";
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const tryParseJson = (text: string) => {
   try {
@@ -32,6 +37,71 @@ const tryParseJson = (text: string) => {
     }
     throw new Error("Invalid JSON from AI response");
   }
+};
+
+const callGroq = async (prompt: string) => {
+  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY (or groq) is not configured");
+
+  const models = [GROQ_MODEL, ...GROQ_MODEL_FALLBACKS].filter((value, index, self) => self.indexOf(value) === index);
+  let lastErrorText = "";
+
+  for (const modelName of models) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const url = `${GROQ_API_URL}/chat/completions`;
+      const body = {
+        model: modelName,
+        messages: [{ role: "user", content: prompt }],
+        max_completion_tokens: 4096,
+        temperature: 0.0,
+      };
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const text = await resp.text();
+      if (!resp.ok) {
+        lastErrorText = `Groq API error: ${resp.status} ${text}`;
+        const lowered = `${resp.status} ${text}`.toLowerCase();
+        const retryable =
+          resp.status === 413 ||
+          resp.status === 429 ||
+          lowered.includes("rate_limit_exceeded") ||
+          lowered.includes("tokens per minute") ||
+          lowered.includes("temporarily unavailable") ||
+          lowered.includes("service unavailable");
+
+        if (retryable && attempt < 2) {
+          const waitMs = resp.status === 429 ? 7000 : 3000 * (attempt + 1);
+          await sleep(waitMs);
+          continue;
+        }
+
+        if (retryable && modelName !== models[models.length - 1]) {
+          break;
+        }
+
+        throw new Error(lastErrorText);
+      }
+
+      try {
+        const j = JSON.parse(text);
+        if (Array.isArray(j.choices) && j.choices[0]?.message?.content) {
+          return j.choices[0].message.content;
+        }
+        return text;
+      } catch {
+        return text;
+      }
+    }
+  }
+
+  throw new Error(lastErrorText || "Groq API error");
 };
 
 Deno.serve(async (req: Request) => {
@@ -98,12 +168,7 @@ Deno.serve(async (req: Request) => {
       }))
       .filter((s: any) => s.name);
 
-    // ── 3. Build plan via Gemini ─────────────────────────────────────────────
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!geminiApiKey) {
-      throw new Error("GEMINI_API_KEY is not configured");
-    }
-
+    // ── 3. Build plan via Groq ───────────────────────────────────────────────
     const allGapSkills = [
       ...missing_required.map((s: string) => ({
         skill: s,
@@ -176,11 +241,7 @@ Rules:
 - Keep milestones concrete and action-oriented (e.g. "Build a CRUD REST API with 5 endpoints").
 - Return ONLY the JSON object — no explanation, no markdown.`;
 
-    const model = new GoogleGenerativeAI(geminiApiKey).getGenerativeModel({
-      model: GEMINI_MODEL,
-    });
-    const result = await model.generateContent(prompt);
-    const rawText = result.response.text() || "";
+    const rawText = await callGroq(prompt);
     const cleanText = rawText
       .replace(/```json/g, "")
       .replace(/```/g, "")
@@ -198,7 +259,7 @@ Rules:
         role_id,
         role_title,
         result: plan,
-        model_used: GEMINI_MODEL,
+        model_used: GROQ_MODEL,
         created_at: new Date().toISOString(),
       },
       { onConflict: "employee_id,role_id" },
@@ -209,7 +270,7 @@ Rules:
         ...plan,
         _cached: false,
         _generated_at: new Date().toISOString(),
-        _model: GEMINI_MODEL,
+        _model: GROQ_MODEL,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

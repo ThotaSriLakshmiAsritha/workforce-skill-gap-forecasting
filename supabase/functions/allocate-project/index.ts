@@ -1,6 +1,5 @@
 ﻿import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js";
-import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 
 type EmployeeSkill = { name: string; proficiency: string };
 type Candidate = {
@@ -25,7 +24,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-flash-latest";
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY")?.trim() || Deno.env.get("groq")?.trim() || "";
+const GROQ_MODEL = Deno.env.get("GROQ_MODEL")?.trim() || "llama-3.3-70b-versatile";
+const GROQ_MODEL_FALLBACKS = (Deno.env.get("GROQ_MODEL_FALLBACKS")?.split(",") ?? [
+  "openai/gpt-oss-120b",
+]).map((value) => value.trim()).filter(Boolean);
+const GROQ_API_URL = Deno.env.get("GROQ_API_URL")?.trim() || "https://api.groq.com/openai/v1";
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const WEIGHTS = {
   skill_fit: 0.55,
@@ -72,6 +78,71 @@ const toJsonString = (value: unknown) => {
   } catch {
     return "{}";
   }
+};
+
+const callGroq = async (prompt: string) => {
+  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY (or groq) is not configured");
+
+  const models = [GROQ_MODEL, ...GROQ_MODEL_FALLBACKS].filter((value, index, self) => self.indexOf(value) === index);
+  let lastErrorText = "";
+
+  for (const modelName of models) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const url = `${GROQ_API_URL}/chat/completions`;
+      const body = {
+        model: modelName,
+        messages: [{ role: "user", content: prompt }],
+        max_completion_tokens: 1024,
+        temperature: 0.0,
+      };
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const text = await resp.text();
+      if (!resp.ok) {
+        lastErrorText = `Groq API error: ${resp.status} ${text}`;
+        const lowered = `${resp.status} ${text}`.toLowerCase();
+        const retryable =
+          resp.status === 413 ||
+          resp.status === 429 ||
+          lowered.includes("rate_limit_exceeded") ||
+          lowered.includes("tokens per minute") ||
+          lowered.includes("temporarily unavailable") ||
+          lowered.includes("service unavailable");
+
+        if (retryable && attempt < 2) {
+          const waitMs = resp.status === 429 ? 7000 : 3000 * (attempt + 1);
+          await sleep(waitMs);
+          continue;
+        }
+
+        if (retryable && modelName !== models[models.length - 1]) {
+          break;
+        }
+
+        throw new Error(lastErrorText);
+      }
+
+      try {
+        const j = JSON.parse(text);
+        if (Array.isArray(j.choices) && j.choices[0]?.message?.content) {
+          return j.choices[0].message.content;
+        }
+        return text;
+      } catch {
+        return text;
+      }
+    }
+  }
+
+  throw new Error(lastErrorText || "Groq API error");
 };
 
 const tryParseJson = (text: string) => {
@@ -166,8 +237,7 @@ const mergeRequirements = (
   };
 };
 
-const extractRequirementsWithGemini = async (
-  model: any,
+const extractRequirementsWithGroq = async (
   fallback: ParsedRequirements,
   chatMessage: string,
 ): Promise<ParsedRequirements> => {
@@ -183,8 +253,8 @@ JSON schema:
   "timeline_weeks": number
 }`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().replace(/```json/g, "").replace(/```/g, "");
+  const result = await callGroq(prompt);
+  const text = result.replace(/```json/g, "").replace(/```/g, "");
   const parsed = tryParseJson(text);
 
   return {
@@ -291,16 +361,12 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
-    const hasGemini = geminiApiKey.trim().length > 0;
-    const model = hasGemini
-      ? new GoogleGenerativeAI(geminiApiKey).getGenerativeModel({ model: GEMINI_MODEL })
-      : null;
+    const hasGroq = GROQ_API_KEY.trim().length > 0;
 
     let requirements = fallbackRequirements;
-    if (chatMessage.length > 0 && model) {
+    if (chatMessage.length > 0 && hasGroq) {
       try {
-        const extractedRequirements = await extractRequirementsWithGemini(model, fallbackRequirements, chatMessage);
+        const extractedRequirements = await extractRequirementsWithGroq(fallbackRequirements, chatMessage);
         requirements = mergeRequirements(fallbackRequirements, extractedRequirements);
       } catch {
         requirements = fallbackRequirements;
@@ -434,14 +500,14 @@ Deno.serve(async (req: Request) => {
 
     let allocationReasoning = "Allocated based on skill fit, proficiency, experience, and strict current availability.";
     try {
-      if (model) {
+      if (hasGroq) {
         const reasoningPrompt = `Write a concise staffing rationale in 3-4 sentences.
 Requirements: ${toJsonString(requirements)}
 Weights: ${toJsonString(WEIGHTS)}
 Matched employees: ${toJsonString(matchedEmployees)}
 Explain why this team was chosen and mention any shortage risk.`;
-        const reasoningResult = await model.generateContent(reasoningPrompt);
-        allocationReasoning = reasoningResult.response.text().trim() || allocationReasoning;
+        const reasoningResult = await callGroq(reasoningPrompt);
+        allocationReasoning = reasoningResult.trim() || allocationReasoning;
       }
     } catch {
       // Keep deterministic fallback explanation.

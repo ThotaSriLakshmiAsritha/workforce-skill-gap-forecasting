@@ -1,72 +1,19 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js";
-import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-flash-latest";
-
-const FALLBACK_MODELS = ["gemini-1.5-flash", "gemini-1.5-pro"];
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY")?.trim() || Deno.env.get("groq")?.trim() || "";
+const GROQ_MODEL = Deno.env.get("GROQ_MODEL")?.trim() || "llama-3.3-70b-versatile";
+const GROQ_MODEL_FALLBACKS = (Deno.env.get("GROQ_MODEL_FALLBACKS")?.split(",") ?? [
+  "openai/gpt-oss-120b",
+]).map((value) => value.trim()).filter(Boolean);
+const GROQ_API_URL = Deno.env.get("GROQ_API_URL")?.trim() || "https://api.groq.com/openai/v1";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const isTransientAiError = (message: string) => {
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes("503") ||
-    normalized.includes("service unavailable") ||
-    normalized.includes("high demand") ||
-    normalized.includes("temporarily unavailable") ||
-    normalized.includes("deadline exceeded") ||
-    normalized.includes("rate limit") ||
-    normalized.includes("resource exhausted")
-  );
-};
-
-const runGeminiWithRetry = async (
-  genAI: GoogleGenerativeAI,
-  payload: any,
-): Promise<string> => {
-  const models = [GEMINI_MODEL, ...FALLBACK_MODELS].filter(
-    (value, index, self) => Boolean(value) && self.indexOf(value) === index,
-  );
-
-  let lastError: any = null;
-
-  for (const modelName of models) {
-    const model = genAI.getGenerativeModel({ model: modelName });
-
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const result = await model.generateContent(payload);
-        return result.response.text();
-      } catch (error: any) {
-        lastError = error;
-        const message = String(error?.message || error || "Unknown AI error");
-        const retryable = isTransientAiError(message);
-        const canRetryAttempt = retryable && attempt < 2;
-
-        if (canRetryAttempt) {
-          await sleep(500 * (attempt + 1));
-          continue;
-        }
-
-        // Try next model for transient outages or model-specific failures.
-        if (retryable || message.toLowerCase().includes("model")) {
-          break;
-        }
-
-        throw error;
-      }
-    }
-  }
-
-  const reason = String(lastError?.message || lastError || "Unknown AI error");
-  throw new Error(`AI resume screening is temporarily unavailable. ${reason}`);
-};
 
 const tryParseJson = (text: string) => {
   try {
@@ -94,6 +41,71 @@ const toBase64 = (bytes: Uint8Array) => {
     binary += String.fromCharCode(...chunk);
   }
   return btoa(binary);
+};
+
+const callGroq = async (prompt: string) => {
+  if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY (or groq) is not configured");
+
+  const models = [GROQ_MODEL, ...GROQ_MODEL_FALLBACKS].filter((value, index, self) => self.indexOf(value) === index);
+  let lastErrorText = "";
+
+  for (const modelName of models) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const url = `${GROQ_API_URL}/chat/completions`;
+      const body = {
+        model: modelName,
+        messages: [{ role: "user", content: prompt }],
+        max_completion_tokens: 2048,
+        temperature: 0.0,
+      };
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const text = await resp.text();
+      if (!resp.ok) {
+        lastErrorText = `Groq API error: ${resp.status} ${text}`;
+        const lowered = `${resp.status} ${text}`.toLowerCase();
+        const retryable =
+          resp.status === 413 ||
+          resp.status === 429 ||
+          lowered.includes("rate_limit_exceeded") ||
+          lowered.includes("tokens per minute") ||
+          lowered.includes("temporarily unavailable") ||
+          lowered.includes("service unavailable");
+
+        if (retryable && attempt < 2) {
+          const waitMs = resp.status === 429 ? 7000 : 3000 * (attempt + 1);
+          await sleep(waitMs);
+          continue;
+        }
+
+        if (retryable && modelName !== models[models.length - 1]) {
+          break;
+        }
+
+        throw new Error(lastErrorText);
+      }
+
+      try {
+        const j = JSON.parse(text);
+        if (Array.isArray(j.choices) && j.choices[0]?.message?.content) {
+          return j.choices[0].message.content;
+        }
+        return text;
+      } catch {
+        return text;
+      }
+    }
+  }
+
+  throw new Error(lastErrorText || "Groq API error");
 };
 
 Deno.serve(async (req: Request) => {
@@ -137,14 +149,21 @@ Deno.serve(async (req: Request) => {
     const bytes = new Uint8Array(arrayBuffer);
     const ext = getExtension(storage_path);
 
-    const mimeType =
-      ext === "pdf"
-        ? "application/pdf"
-        : ext === "txt"
-        ? "text/plain"
-        : "application/octet-stream";
-
-    const genAI = new GoogleGenerativeAI(Deno.env.get("GEMINI_API_KEY") || "");
+    // Extract text from resume
+    let resumeText = "";
+    if (ext === "txt") {
+      resumeText = new TextDecoder("utf-8").decode(bytes);
+    } else if (ext === "pdf") {
+      const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+      const readable = text.match(/[\x20-\x7E\n\r\t]{3,}/g);
+      if (readable && readable.length > 20) {
+        resumeText = readable.join(" ");
+      } else {
+        resumeText = "Unable to extract text from PDF. Please use a text-based resume.";
+      }
+    } else {
+      resumeText = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    }
 
     const prompt = `You are a senior technical recruiter. Extract structured data from the provided resume and score the candidate against the job requirement. Return ONLY valid JSON with no markdown fences:
 {
@@ -162,18 +181,12 @@ Deno.serve(async (req: Request) => {
 
 Job requirement: ${JSON.stringify(jobReq)}
 
+Resume content:
+${resumeText.slice(0, 6000)}
+
 If the file content is unclear, do your best and keep unknown fields empty or conservative.`;
 
-    const output = await runGeminiWithRetry(genAI, [
-      { text: prompt },
-      {
-        inlineData: {
-          mimeType,
-          data: toBase64(bytes),
-        },
-      },
-    ]);
-
+    const output = await callGroq(prompt);
     let outputText = output.replace(/```json/g, "").replace(/```/g, "");
 
     let parsedJson;
@@ -181,7 +194,7 @@ If the file content is unclear, do your best and keep unknown fields empty or co
       parsedJson = tryParseJson(outputText);
     } catch {
       const fixPrompt = `Fix this into valid JSON ONLY.\n${outputText}`;
-      const repairedText = await runGeminiWithRetry(genAI, fixPrompt);
+      const repairedText = await callGroq(fixPrompt);
       outputText = repairedText.replace(/```json/g, "").replace(/```/g, "");
       parsedJson = tryParseJson(outputText);
     }

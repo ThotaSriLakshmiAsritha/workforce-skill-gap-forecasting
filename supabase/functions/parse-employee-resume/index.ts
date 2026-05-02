@@ -1,18 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js";
-import { GoogleGenerativeAI } from "npm:@google/generative-ai";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")?.trim() || "";
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-flash-latest";
-const GEMINI_MODEL_FALLBACKS = (Deno.env.get("GEMINI_MODEL_FALLBACKS")?.split(",") ?? [
-  "gemini-1.5-flash",
-  "gemini-1.5-pro",
-]).map((value) => value.trim()).filter(Boolean);
 
 const GROQ_API_KEY =
   Deno.env.get("GROQ_API_KEY")?.trim() ||
@@ -105,141 +97,6 @@ const splitTextIntoChunks = (text: string, maxChars = 3500) => {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const compactText = (text: string) => text.replace(/\s+/g, " ").trim();
-
-const isTransientAiError = (message: string) => {
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes("503") ||
-    normalized.includes("service unavailable") ||
-    normalized.includes("high demand") ||
-    normalized.includes("temporarily unavailable") ||
-    normalized.includes("deadline exceeded") ||
-    normalized.includes("rate limit") ||
-    normalized.includes("resource exhausted")
-  );
-};
-
-const runGeminiWithRetry = async (
-  genAI: GoogleGenerativeAI,
-  payload: any,
-): Promise<string> => {
-  const models = [GEMINI_MODEL, ...GEMINI_MODEL_FALLBACKS].filter(
-    (value, index, self) => Boolean(value) && self.indexOf(value) === index,
-  );
-
-  let lastError: any = null;
-
-  for (const modelName of models) {
-    const model = genAI.getGenerativeModel({ model: modelName });
-
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const result = await model.generateContent(payload);
-        return result.response.text();
-      } catch (error: any) {
-        lastError = error;
-        const message = String(error?.message || error || "Unknown AI error");
-        const retryable = isTransientAiError(message);
-        const canRetryAttempt = retryable && attempt < 2;
-
-        if (canRetryAttempt) {
-          await sleep(500 * (attempt + 1));
-          continue;
-        }
-
-        if (retryable || message.toLowerCase().includes("model")) {
-          break;
-        }
-
-        throw error;
-      }
-    }
-  }
-
-  const reason = String(lastError?.message || lastError || "Unknown AI error");
-  throw new Error(`AI resume parsing is temporarily unavailable. ${reason}`);
-};
-
-const parseJsonResponse = (text: string) => {
-  const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
-  try {
-    return tryParseJson(cleaned);
-  } catch {
-    const fixPrompt = `Fix this into valid JSON ONLY, no markdown:\n${cleaned}`;
-    throw new Error(fixPrompt);
-  }
-};
-
-const parsePdfWithGemini = async (bytes: Uint8Array) => {
-  if (!GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured");
-  }
-
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const prompt = `You are an expert resume parser.
-Read the attached resume PDF carefully, including layout-heavy content, headers, bullet points, and section titles.
-Return ONLY valid JSON with no markdown fences or extra text.
-
-Return this exact shape:
-{
-  "current_job_title": "string or null",
-  "total_experience_years": 0,
-  "summary": "string or null",
-  "education": "string or null",
-  "skills": [
-    {
-      "name": "string",
-      "category": "technical or soft or domain",
-      "proficiency": "beginner or intermediate or advanced or expert"
-    }
-  ],
-  "work_experiences": [
-    {
-      "company": "string",
-      "role": "string",
-      "start_date": "string or null",
-      "end_date": "string or null",
-      "description": "string or null"
-    }
-  ],
-  "projects": [
-    {
-      "name": "string",
-      "description": "string or null",
-      "technologies": ["string"],
-      "url": "string or null"
-    }
-  ]
-}
-
-Rules:
-- Extract only what is explicitly present or clearly supported by the PDF.
-- Be strict. Do not invent skills, roles, dates, or projects.
-- If a field is unknown, use null or an empty array.
-- Prefer concise extraction over guessing.
-- If the PDF has multiple sections, combine them carefully without duplicating items.`;
-
-  const rawOutput = await runGeminiWithRetry(genAI, [
-    { text: prompt },
-    {
-      inlineData: {
-        mimeType: "application/pdf",
-        data: toBase64(bytes),
-      },
-    },
-  ]);
-
-  let outputText = rawOutput.replace(/```json/g, "").replace(/```/g, "").trim();
-
-  try {
-    return tryParseJson(outputText);
-  } catch {
-    const fixPrompt = `Fix this into valid JSON ONLY, no markdown:\n${outputText}`;
-    const repaired = await runGeminiWithRetry(genAI, fixPrompt);
-    outputText = repaired.replace(/```json/g, "").replace(/```/g, "").trim();
-    return tryParseJson(outputText);
-  }
-};
 
 const pickEvenlySpacedChunks = (chunks: string[], maxChunks: number) => {
   if (chunks.length <= maxChunks) return chunks;
@@ -528,12 +385,12 @@ Deno.serve(async (req: Request) => {
     if (ext === "txt") {
       resumeText = new TextDecoder("utf-8").decode(bytes);
     } else if (ext === "pdf") {
-      if (!GEMINI_API_KEY) {
-        const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-        const readable = text.match(/[\x20-\x7E]{3,}/g);
-        if (readable && readable.length > 20) {
-          resumeText = readable.join(" ");
-        }
+      const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+      const readable = text.match(/[\x20-\x7E\n\r\t]{3,}/g);
+      if (readable && readable.length > 20) {
+        resumeText = readable.join(" ");
+      } else {
+        resumeText = "";
       }
     } else if (ext === "docx") {
       resumeText = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
@@ -680,34 +537,30 @@ ${chunkText}`;
 
     let parsed: any;
 
-    if (ext === "pdf" && GEMINI_API_KEY) {
-      parsed = await parsePdfWithGemini(bytes);
-    } else {
-      const modelText = compactText(resumeText);
-      const allChunks = splitTextIntoChunks(modelText, 2200);
-      const resumeChunks = pickEvenlySpacedChunks(allChunks, allChunks.length > 8 ? 8 : allChunks.length);
-      const parsedChunks: any[] = [];
+    const modelText = compactText(resumeText);
+    const allChunks = splitTextIntoChunks(modelText, 2200);
+    const resumeChunks = pickEvenlySpacedChunks(allChunks, allChunks.length > 8 ? 8 : allChunks.length);
+    const parsedChunks: any[] = [];
 
-      for (let i = 0; i < resumeChunks.length; i++) {
-        const rawOutput = await callGroq(chunkPrompt(resumeChunks[i], i, resumeChunks.length));
-        let outputText = rawOutput.replace(/```json/g, "").replace(/```/g, "").trim();
+    for (let i = 0; i < resumeChunks.length; i++) {
+      const rawOutput = await callGroq(chunkPrompt(resumeChunks[i], i, resumeChunks.length));
+      let outputText = rawOutput.replace(/```json/g, "").replace(/```/g, "").trim();
 
-        let parsedChunk: any;
-        try {
-          parsedChunk = tryParseJson(outputText);
-        } catch {
-          const fixPrompt = `Fix this into valid JSON ONLY, no markdown:\n${outputText}`;
-          const retryText = await callGroq(fixPrompt);
-          outputText = retryText.replace(/```json/g, "").replace(/```/g, "").trim();
-          parsedChunk = tryParseJson(outputText);
-        }
-
-        parsedChunks.push(parsedChunk);
-
+      let parsedChunk: any;
+      try {
+        parsedChunk = tryParseJson(outputText);
+      } catch {
+        const fixPrompt = `Fix this into valid JSON ONLY, no markdown:\n${outputText}`;
+        const retryText = await callGroq(fixPrompt);
+        outputText = retryText.replace(/```json/g, "").replace(/```/g, "").trim();
+        parsedChunk = tryParseJson(outputText);
       }
 
-      parsed = mergeChunkResults(parsedChunks);
+      parsedChunks.push(parsedChunk);
+
     }
+
+    parsed = mergeChunkResults(parsedChunks);
     const skills: any[] = parsed.skills || [];
     const experiences: any[] = parsed.work_experiences || [];
     const projects: any[] = parsed.projects || [];
