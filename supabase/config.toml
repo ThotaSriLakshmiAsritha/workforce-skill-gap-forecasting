@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.parse-employee-resume]
 verify_jwt = false
+
+[functions.analyze-skill-gap]
+verify_jwt = false

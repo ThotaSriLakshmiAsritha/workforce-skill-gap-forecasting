@@ -26,19 +26,42 @@ The application provides:
 npm install
 ```
 
-2. Start the development server:
+2. Set up environment variables:
+
+Create a `.env.local` file in the root directory:
+
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+3. Set up Supabase Edge Functions:
+
+The skill gap analysis feature requires a Gemini API key. Add it to your Supabase project:
+
+```bash
+# Get API key from https://aistudio.google.com/app/apikey
+supabase secrets set GEMINI_API_KEY=your_gemini_api_key
+
+# Deploy edge functions
+supabase functions deploy analyze-skill-gap
+```
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed setup instructions.
+
+4. Start the development server:
 
 ```bash
 npm run dev
 ```
 
-3. Build for production:
+5. Build for production:
 
 ```bash
 npm run build
 ```
 
-4. Preview the production build:
+6. Preview the production build:
 
 ```bash
 npm run preview

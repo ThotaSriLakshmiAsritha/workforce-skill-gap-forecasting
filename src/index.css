@@ -26,6 +26,10 @@
     --brand-accent-hover: 35 88 58;
     --brand-accent-soft: 45 105 70;
 
+    /* Text selection */
+    --brand-selection-bg: 182 221 199;
+    --brand-selection-text: 17 24 17;
+
     /* shadcn tokens (light) */
     --background: 0 0% 95%;
     --foreground: 0 0% 7%;
@@ -62,6 +66,8 @@
     --brand-accent: 72 180 115;
     --brand-accent-hover: 85 200 130;
     --brand-accent-soft: 72 180 115;
+    --brand-selection-bg: 45 105 70;
+    --brand-selection-text: 255 255 255;
 
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
@@ -93,6 +99,16 @@
   *:focus-visible {
     outline: 2px solid rgb(var(--brand-accent));
     outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: rgb(var(--brand-selection-bg));
+    color: rgb(var(--brand-selection-text));
+  }
+
+  ::-moz-selection {
+    background-color: rgb(var(--brand-selection-bg));
+    color: rgb(var(--brand-selection-text));
   }
 
   body {

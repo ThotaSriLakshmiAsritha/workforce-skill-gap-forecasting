@@ -168,8 +168,15 @@ export default function SkillGapAnalysis({ userId, selectedRoleId, onRoleChange 
         body: { employee_id: userId, role_id: selectedRole.id, role_title: selectedRole.title, force_refresh: forceRefresh },
       });
 
-      if (fnError) throw new Error(fnError.message || 'Function error');
-      if (data?.error) throw new Error(data.error);
+      if (fnError) {
+        console.error('Edge function error:', fnError);
+        throw new Error(fnError.message || 'Function invocation failed');
+      }
+
+      if (data?.error) {
+        console.error('API error response:', data.error);
+        throw new Error(data.error);
+      }
 
       setAnalysis(data as AIAnalysis);
       setAnalysedRoleId(selectedRoleId);
@@ -177,6 +184,7 @@ export default function SkillGapAnalysis({ userId, selectedRoleId, onRoleChange 
       // Refresh the log list to reflect the new/updated entry
       await fetchLogs();
     } catch (err: any) {
+      console.error('Skill gap analysis error:', err);
       setError(err.message || 'Failed to analyse skill gap. Please try again.');
     } finally {
       setLoading(false);
